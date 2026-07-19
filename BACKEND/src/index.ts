@@ -11,4 +11,8 @@ app.get("/", (req, res) => {
   res.send("Server Running");
 });
 
+import authRoutes from "./routes/auth.route";
+
+app.use("/api/auth", authRoutes);
+
 export default app;

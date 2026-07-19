@@ -17,6 +17,7 @@ model User {
 
   memberships     Membership[]
   apiKeys         ApiKey[]
+  createdOrganizations Organization[]
 }
 
 enum UserStatus {
