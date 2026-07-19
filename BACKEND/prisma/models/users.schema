@@ -1,0 +1,25 @@
+model User {
+  id              String   @id @default(cuid())
+
+  name            String
+  email           String   @unique
+  passwordHash    String?
+
+  emailVerified   Boolean  @default(false)
+  image           String?
+
+  status          UserStatus @default(ACTIVE)
+
+  lastLoginAt     DateTime?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  memberships     Membership[]
+  apiKeys         ApiKey[]
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}

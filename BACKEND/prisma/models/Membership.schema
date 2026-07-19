@@ -1,0 +1,31 @@
+model Membership {
+
+  id              String @id @default(cuid())
+
+  organizationId  String
+  organization    Organization @relation(fields:[organizationId], references:[id])
+
+  userId          String
+  user            User @relation(fields:[userId], references:[id])
+
+  role            Role
+
+  invitedById     String?
+
+  createdAt       DateTime @default(now())
+
+  @@unique([organizationId,userId])
+
+}
+
+enum Role {
+
+OWNER
+
+ADMIN
+
+DEVELOPER
+
+VIEWER
+
+}

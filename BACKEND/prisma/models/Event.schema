@@ -1,0 +1,56 @@
+model Event {
+
+  id                  String @id @default(cuid())
+
+  organizationId      String
+
+  endpointId          String
+
+  endpoint            Endpoint @relation(fields:[endpointId], references:[id])
+
+  eventType           String
+
+  payload             Json
+
+  headers             Json?
+
+  metadata            Json?
+
+  source              String?
+
+  idempotencyKey      String?
+
+  status              EventStatus @default(PENDING)
+
+  scheduledAt         DateTime @default(now())
+
+  createdAt           DateTime @default(now())
+
+  updatedAt           DateTime @updatedAt
+
+  @@index([status])
+
+  @@index([scheduledAt])
+
+  @@index([endpointId])
+
+}
+
+
+enum EventStatus {
+
+PENDING
+
+QUEUED
+
+PROCESSING
+
+DELIVERED
+
+FAILED
+
+DEAD
+
+CANCELLED
+
+}

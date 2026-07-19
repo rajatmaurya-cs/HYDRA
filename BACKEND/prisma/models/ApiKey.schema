@@ -1,0 +1,37 @@
+model ApiKey {
+
+  id                String @id @default(cuid())
+
+  organizationId    String
+  organization      Organization @relation(fields:[organizationId], references:[id])
+
+  createdById       String
+  createdBy         User @relation(fields:[createdById], references:[id])
+
+  name              String
+
+  prefix            String
+
+  hashedKey         String
+
+  environment       Environment
+
+  permissions       Json?
+
+  expiresAt         DateTime?
+
+  lastUsedAt        DateTime?
+
+  revoked           Boolean @default(false)
+
+  createdAt         DateTime @default(now())
+
+}
+
+enum Environment {
+
+TEST
+
+LIVE
+
+}

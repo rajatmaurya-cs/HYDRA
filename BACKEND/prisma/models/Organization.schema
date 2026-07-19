@@ -1,0 +1,45 @@
+model Organization {
+
+  id                String @id @default(cuid())
+
+  name              String
+  slug              String @unique
+
+  description       String?
+
+  logo              String?
+
+  billingEmail      String?
+
+  webhookSecret     String
+
+  plan              Plan @default(FREE)
+
+  isActive          Boolean @default(true)
+
+  createdById       String
+  createdBy         User @relation(fields:[createdById], references:[id])
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  endpoints         Endpoint[]
+
+  apiKeys           ApiKey[]
+
+  members           Membership[]
+
+}
+
+
+enum Plan {
+
+  FREE
+
+  PRO
+
+  BUSINESS
+
+  ENTERPRISE
+
+}
