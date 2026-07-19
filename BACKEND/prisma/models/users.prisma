@@ -18,6 +18,7 @@ model User {
   memberships     Membership[]
   apiKeys         ApiKey[]
   createdOrganizations Organization[]
+  refreshTokens   RefreshToken[]
 }
 
 enum UserStatus {
