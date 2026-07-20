@@ -12,6 +12,7 @@ export interface ApiKeyRequest extends Request {
 
 export async function requireApiKey(req: ApiKeyRequest, res: Response, next: NextFunction) {
   try {
+    
     let rawKey: string | undefined;
 
     if (req.headers.authorization) {

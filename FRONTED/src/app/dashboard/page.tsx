@@ -472,24 +472,30 @@ export default function DashboardPage() {
                 </div>
                 {/* Event tag pills */}
                 {endpointEventsList.length > 0 && (
-                  <div className="flex flex-col gap-1.5 items-start mt-1">
-                    {endpointEventsList.map((ev) => (
-                      <span
-                        key={ev}
-                        className="bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-[11px] pl-2.5 pr-1.5 py-0.5 rounded-full flex items-center gap-1"
-                      >
-                        {ev}
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveEvent(ev)}
-                          className="hover:text-rose-400 text-indigo-400/60 transition-colors cursor-pointer"
+                  <div className="mt-2.5 bg-slate-900/60 border border-white/10 rounded-xl p-3 space-y-1.5">
+                    <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider block mb-0.5">
+                      Active Subscriptions ({endpointEventsList.length})
+                    </span>
+                    <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                      {endpointEventsList.map((ev) => (
+                        <div
+                          key={ev}
+                          className="flex items-center justify-between bg-white/[0.01] border border-white/[0.05] hover:bg-white/[0.03] px-3 py-2 rounded-lg transition-all"
                         >
-                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </span>
-                    ))}
+                          <code className="text-xs text-indigo-300 font-mono">{ev}</code>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveEvent(ev)}
+                            className="text-slate-500 hover:text-rose-400 transition-colors cursor-pointer p-0.5"
+                            title={`Remove ${ev}`}
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>

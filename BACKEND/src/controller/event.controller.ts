@@ -3,6 +3,7 @@ import prisma from '../lib/prisma';
 import { ApiKeyRequest } from '../middleware/apiKey.middleware';
 
 export async function createEvent(req: ApiKeyRequest, res: Response) {
+  
   try {
     if (!req.orgAuth) {
       res.status(401).json({ message: "Unauthorized. Missing organization authorization context." });

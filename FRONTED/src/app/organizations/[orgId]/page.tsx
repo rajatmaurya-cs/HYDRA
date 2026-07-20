@@ -284,24 +284,30 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
                 </div>
                 {/* Event tag pills */}
                 {subscribedEvents.length > 0 && (
-                  <div className="flex flex-col gap-2 items-start mt-1.5">
-                    {subscribedEvents.map((ev) => (
-                      <span
-                        key={ev}
-                        className="bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs pl-3 pr-2 py-1 rounded-full flex items-center gap-1.5"
-                      >
-                        {ev}
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveEvent(ev)}
-                          className="hover:text-rose-400 text-indigo-400/60 transition-colors cursor-pointer"
+                  <div className="mt-3 bg-slate-950/60 border border-white/10 rounded-xl p-3.5 space-y-2">
+                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">
+                      Active Subscriptions ({subscribedEvents.length})
+                    </span>
+                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                      {subscribedEvents.map((ev) => (
+                        <div
+                          key={ev}
+                          className="flex items-center justify-between bg-white/[0.02] border border-white/[0.05] hover:bg-white/[0.04] px-3.5 py-2.5 rounded-xl transition-all"
                         >
-                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </span>
-                    ))}
+                          <code className="text-xs text-indigo-300 font-mono">{ev}</code>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveEvent(ev)}
+                            className="text-slate-500 hover:text-rose-400 transition-colors cursor-pointer p-0.5"
+                            title={`Remove ${ev}`}
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
