@@ -20,7 +20,15 @@ app.get("/", (req, res) => {
 });
 
 import authRoutes from "./routes/auth.route";
+import organizationRoutes from "./routes/organization.route";
+import endpointRoutes from "./routes/endpoint.route";
+import apiKeyRoutes from "./routes/apikey.route";
+import eventRoutes from "./routes/event.route";
 
 app.use("/api/auth", authRoutes);
+app.use("/api/organizations", organizationRoutes);
+app.use("/api/endpoints", endpointRoutes);
+app.use("/api/api-keys", apiKeyRoutes);
+app.use("/api/events", eventRoutes);
 
 export default app;

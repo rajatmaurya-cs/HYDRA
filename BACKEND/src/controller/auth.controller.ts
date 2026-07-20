@@ -1,6 +1,13 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import prisma from '../lib/prisma';
+import {
+  generateAccessToken,
+  generateRefreshToken,
+  verifyAccessToken,
+  verifyRefreshToken
+} from '../utils/token';
+
 
 export async function userRegister(req: Request, res: Response) {
   try {
@@ -57,12 +64,6 @@ export async function userRegister(req: Request, res: Response) {
     res.status(500).json({ message: "Internal server error." });
   }
 }
-import {
-  generateAccessToken,
-  generateRefreshToken,
-  verifyAccessToken,
-  verifyRefreshToken
-} from '../utils/token';
 
 export async function userLogin(req: Request, res: Response) {
   try {
@@ -202,6 +203,26 @@ export async function userMe(req: Request, res: Response) {
 
   } catch (error: any) {
     console.error("Auth verification error:", error);
+    res.status(500).json({ message: "Internal server error." });
+  }
+}
+
+export async function userLogout(req: Request, res: Response) {
+  try {
+    const { refreshToken } = req.cookies;
+
+    if (refreshToken) {
+      await prisma.refreshToken.deleteMany({
+        where: { token: refreshToken }
+      });
+    }
+
+    res.clearCookie('accessToken');
+    res.clearCookie('refreshToken');
+
+    res.status(200).json({ message: "Logged out successfully." });
+  } catch (error: any) {
+    console.error("Logout error:", error);
     res.status(500).json({ message: "Internal server error." });
   }
 }

@@ -2,8 +2,13 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useAuth } from "@/context/AuthContext";
+
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
+  const { login } = useAuth();
+  const router = useRouter();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -57,6 +62,7 @@ export default function LoginPage() {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include", // Store cookies
         body: JSON.stringify({
           email: formData.email,
           password: formData.password,
@@ -70,7 +76,14 @@ export default function LoginPage() {
           type: "success",
           message: `Welcome back, ${data?.user?.name || "User"}! Login successful.`,
         });
-        // You could redirect or save tokens here
+        
+        if (data?.user) {
+          login(data.user);
+          // Redirect to organizations page
+          setTimeout(() => {
+            router.push("/organizations");
+          }, 800);
+        }
       } else {
         setStatus({
           type: "error",
