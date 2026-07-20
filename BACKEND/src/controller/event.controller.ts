@@ -1,9 +1,10 @@
 import { Response } from 'express';
 import prisma from '../lib/prisma';
 import { ApiKeyRequest } from '../middleware/apiKey.middleware';
+import { redisConnection } from '../lib/redis';
+import { produceMessage } from '../lib/kafka';
 
 export async function createEvent(req: ApiKeyRequest, res: Response) {
-  
   try {
     if (!req.orgAuth) {
       res.status(401).json({ message: "Unauthorized. Missing organization authorization context." });
@@ -29,7 +30,20 @@ export async function createEvent(req: ApiKeyRequest, res: Response) {
       return;
     }
 
-    // 2. Fetch all active, unpaused endpoints registered for this organization that are subscribed to this eventType
+    // 2. CHECK REDIS FOR IDEMPOTENCY KEY
+    let redisKey = '';
+    if (idempotencyKey) {
+      redisKey = `idempotency:${organizationId}:${idempotencyKey}`;
+      const duplicateExists = await redisConnection.get(redisKey);
+      if (duplicateExists) {
+        res.status(409).json({
+          message: "Duplicate request. This idempotency key has already been processed."
+        });
+        return;
+      }
+    }
+
+    // 3. Fetch all active, unpaused endpoints registered for this organization that are subscribed to this eventType
     const endpoints = await prisma.endpoint.findMany({
       where: {
         organizationId,
@@ -49,7 +63,7 @@ export async function createEvent(req: ApiKeyRequest, res: Response) {
       return;
     }
 
-    // 3. Create a pending Event record for each active endpoint
+    // 4. SAVE EVENT(S) IN DATABASE
     const createdEvents = await Promise.all(
       endpoints.map((endpoint) =>
         prisma.event.create({
@@ -65,6 +79,23 @@ export async function createEvent(req: ApiKeyRequest, res: Response) {
         })
       )
     );
+
+    // 5. STORE IDEMPOTENCY KEY IN REDIS (24-hour expiration)
+    if (idempotencyKey && redisKey) {
+      await redisConnection.set(redisKey, 'processed', 'EX', 86400);
+    }
+
+    // 6. PUBLISH TO KAFKA
+    try {
+      await Promise.all(
+        createdEvents.map((event) =>
+          produceMessage('webhook-events', event, event.id)
+        )
+      );
+      console.log(`📡 Successfully published ${createdEvents.length} event(s) to Kafka topic [webhook-events]`);
+    } catch (kafkaError) {
+      console.error("⚠️ Failed to publish events to Kafka, but they are saved in the DB:", kafkaError);
+    }
 
     res.status(201).json({
       message: `Event successfully dispatched to ${endpoints.length} active endpoint(s).`,
