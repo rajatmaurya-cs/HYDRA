@@ -11,13 +11,14 @@ export async function createEvent(req: ApiKeyRequest, res: Response) {
 
     const { organizationId } = req.orgAuth;
 
-    // Parse keys flexibly (handling both Eventype/eventType and data/payload)
-    const eventType = req.body.Eventype || req.body.eventType || req.body.event_type;
+    // Parse keys flexibly (handling both event/Eventype/eventType/event_type and data/payload)
+    const eventType = req.body.event || req.body.Eventype || req.body.eventType || req.body.event_type;
     const payload = req.body.data || req.body.payload;
+    const idempotencyKey = (req.headers['idempotency-key'] as string) || req.body.idempotencyKey || req.body.idempotency_key;
 
     // 1. Basic validation
     if (!eventType) {
-      res.status(400).json({ message: "Event type is required (specify 'Eventype' or 'eventType')." });
+      res.status(400).json({ message: "Event type is required (specify 'event' or 'eventType')." });
       return;
     }
 
@@ -55,6 +56,7 @@ export async function createEvent(req: ApiKeyRequest, res: Response) {
             endpointId: endpoint.id,
             eventType,
             payload,
+            idempotencyKey: idempotencyKey || undefined,
             status: 'PENDING',
           }
         })

@@ -30,5 +30,7 @@ app.use("/api/organizations", organizationRoutes);
 app.use("/api/endpoints", endpointRoutes);
 app.use("/api/api-keys", apiKeyRoutes);
 app.use("/api/events", eventRoutes);
+app.use("/v1/events", eventRoutes);
+app.use("/api/v1/events", eventRoutes);
 
 export default app;
