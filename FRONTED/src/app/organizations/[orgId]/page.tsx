@@ -34,7 +34,8 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [description, setDescription] = useState("");
-  const [eventsText, setEventsText] = useState("payment.success");
+  const [subscribedEvents, setSubscribedEvents] = useState<string[]>(["payment.success"]);
+  const [eventInput, setEventInput] = useState("");
   const [formError, setFormError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -85,6 +86,22 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
     }
   };
 
+  const handleAddEvent = (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
+    const cleanEvent = eventInput.trim();
+    if (!cleanEvent) return;
+    if (subscribedEvents.includes(cleanEvent)) {
+      setEventInput("");
+      return;
+    }
+    setSubscribedEvents((prev) => [...prev, cleanEvent]);
+    setEventInput("");
+  };
+
+  const handleRemoveEvent = (eventToRemove: string) => {
+    setSubscribedEvents((prev) => prev.filter((ev) => ev !== eventToRemove));
+  };
+
   const handleCreateEndpoint = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError("");
@@ -94,10 +111,10 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
       return;
     }
 
-    const parsedEvents = eventsText
-      .split(",")
-      .map((ev) => ev.trim())
-      .filter((ev) => ev.length > 0);
+    if (subscribedEvents.length === 0) {
+      setFormError("At least one subscribed event is required.");
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -112,7 +129,7 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
           name,
           url,
           description: description || undefined,
-          subscribedEvents: parsedEvents,
+          subscribedEvents: subscribedEvents,
         }),
       });
 
@@ -123,7 +140,8 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
         setName("");
         setUrl("");
         setDescription("");
-        setEventsText("payment.success");
+        setSubscribedEvents(["payment.success"]);
+        setEventInput("");
         setShowForm(false);
       } else {
         setFormError(data.message || "Failed to create endpoint.");
@@ -236,18 +254,56 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
                   className="w-full px-4 py-3 bg-slate-950/60 border border-white/10 rounded-xl text-white text-sm placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all"
                 />
               </div>
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-2">
                 <label className="text-[11px] font-semibold text-slate-300 tracking-wider uppercase">
-                  Subscribed Events (comma-separated)
+                  Subscribed Events
                 </label>
-                <input
-                  type="text"
-                  placeholder="payment.success, user.created"
-                  value={eventsText}
-                  onChange={(e) => setEventsText(e.target.value)}
-                  required
-                  className="w-full px-4 py-3 bg-slate-950/60 border border-white/10 rounded-xl text-white text-sm placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all"
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="e.g. payment.success"
+                    value={eventInput}
+                    onChange={(e) => setEventInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddEvent();
+                      }
+                    }}
+                    className="flex-1 px-4 py-3 bg-slate-950/60 border border-white/10 rounded-xl text-white text-sm placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleAddEvent()}
+                    className="px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold flex items-center justify-center cursor-pointer transition-all hover:shadow-indigo-500/10"
+                  >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                    </svg>
+                  </button>
+                </div>
+                {/* Event tag pills */}
+                {subscribedEvents.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-1.5">
+                    {subscribedEvents.map((ev) => (
+                      <span
+                        key={ev}
+                        className="bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs pl-3 pr-2 py-1 rounded-full flex items-center gap-1.5"
+                      >
+                        {ev}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveEvent(ev)}
+                          className="hover:text-rose-400 text-indigo-400/60 transition-colors cursor-pointer"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="flex flex-col gap-1.5">

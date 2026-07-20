@@ -44,7 +44,8 @@ export default function DashboardPage() {
   const [endpointName, setEndpointName] = useState("");
   const [endpointUrl, setEndpointUrl] = useState("");
   const [endpointDesc, setEndpointDesc] = useState("");
-  const [endpointEvents, setEndpointEvents] = useState("payment.success");
+  const [endpointEventsList, setEndpointEventsList] = useState<string[]>(["payment.success"]);
+  const [eventInputText, setEventInputText] = useState("");
 
   // API Keys list & creation
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
@@ -135,6 +136,22 @@ export default function DashboardPage() {
     }
   };
 
+  const handleAddEvent = (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
+    const cleanEvent = eventInputText.trim();
+    if (!cleanEvent) return;
+    if (endpointEventsList.includes(cleanEvent)) {
+      setEventInputText("");
+      return;
+    }
+    setEndpointEventsList((prev) => [...prev, cleanEvent]);
+    setEventInputText("");
+  };
+
+  const handleRemoveEvent = (eventToRemove: string) => {
+    setEndpointEventsList((prev) => prev.filter((ev) => ev !== eventToRemove));
+  };
+
   const handleCreateEndpoint = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg("");
@@ -144,10 +161,10 @@ export default function DashboardPage() {
       return;
     }
 
-    const parsedEvents = endpointEvents
-      .split(",")
-      .map((ev) => ev.trim())
-      .filter((ev) => ev.length > 0);
+    if (endpointEventsList.length === 0) {
+      setErrorMsg("At least one subscribed event is required.");
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -160,7 +177,7 @@ export default function DashboardPage() {
           name: endpointName,
           url: endpointUrl,
           description: endpointDesc || undefined,
-          subscribedEvents: parsedEvents,
+          subscribedEvents: endpointEventsList,
         }),
       });
 
@@ -170,7 +187,8 @@ export default function DashboardPage() {
         setEndpointName("");
         setEndpointUrl("");
         setEndpointDesc("");
-        setEndpointEvents("payment.success");
+        setEndpointEventsList(["payment.success"]);
+        setEventInputText("");
         setShowEndpointModal(false);
         setSuccessMsg("Endpoint created successfully!");
       } else {
@@ -426,16 +444,54 @@ export default function DashboardPage() {
                   className="px-4 py-2.5 bg-slate-900 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-indigo-500 text-white"
                 />
               </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-300">Subscribed Events (comma-separated)</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="payment.success, user.created"
-                  value={endpointEvents}
-                  onChange={(e) => setEndpointEvents(e.target.value)}
-                  className="px-4 py-2.5 bg-slate-900 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-indigo-500 text-white"
-                />
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-300">Subscribed Events</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="e.g. payment.success"
+                    value={eventInputText}
+                    onChange={(e) => setEventInputText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddEvent();
+                      }
+                    }}
+                    className="flex-1 px-4 py-2.5 bg-slate-900 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-indigo-500 text-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleAddEvent()}
+                    className="px-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center justify-center cursor-pointer transition-all"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                    </svg>
+                  </button>
+                </div>
+                {/* Event tag pills */}
+                {endpointEventsList.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-1">
+                    {endpointEventsList.map((ev) => (
+                      <span
+                        key={ev}
+                        className="bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-[11px] pl-2.5 pr-1.5 py-0.5 rounded-full flex items-center gap-1"
+                      >
+                        {ev}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveEvent(ev)}
+                          className="hover:text-rose-400 text-indigo-400/60 transition-colors cursor-pointer"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-300">Description (Optional)</label>
