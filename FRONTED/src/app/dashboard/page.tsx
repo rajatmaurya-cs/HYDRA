@@ -472,7 +472,7 @@ export default function DashboardPage() {
                 </div>
                 {/* Event tag pills */}
                 {endpointEventsList.length > 0 && (
-                  <div className="mt-2.5 bg-slate-900/60 border border-white/10 rounded-xl p-3 space-y-1.5">
+                  <div className="mt-2.5 bg-slate-900/60 border border-white/10 rounded-xl p-3 space-y-1.5 w-fit min-w-[240px]">
                     <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider block mb-0.5">
                       Active Subscriptions ({endpointEventsList.length})
                     </span>

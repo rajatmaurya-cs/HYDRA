@@ -284,7 +284,7 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
                 </div>
                 {/* Event tag pills */}
                 {subscribedEvents.length > 0 && (
-                  <div className="mt-3 bg-slate-950/60 border border-white/10 rounded-xl p-3.5 space-y-2">
+                  <div className="mt-3 bg-slate-950/60 border border-white/10 rounded-xl p-3.5 space-y-2 w-fit min-w-[240px]">
                     <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">
                       Active Subscriptions ({subscribedEvents.length})
                     </span>
