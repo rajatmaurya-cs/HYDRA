@@ -284,7 +284,7 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
                 </div>
                 {/* Event tag pills */}
                 {subscribedEvents.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-1.5">
+                  <div className="flex flex-col gap-2 items-start mt-1.5">
                     {subscribedEvents.map((ev) => (
                       <span
                         key={ev}

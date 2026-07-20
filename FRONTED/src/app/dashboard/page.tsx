@@ -472,7 +472,7 @@ export default function DashboardPage() {
                 </div>
                 {/* Event tag pills */}
                 {endpointEventsList.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mt-1">
+                  <div className="flex flex-col gap-1.5 items-start mt-1">
                     {endpointEventsList.map((ev) => (
                       <span
                         key={ev}
