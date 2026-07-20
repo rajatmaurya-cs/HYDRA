@@ -4,16 +4,6 @@ import { ApiKeyRequest } from '../middleware/apiKey.middleware';
 
 export async function createEvent(req: ApiKeyRequest, res: Response) {
   try {
-    const {
-      endpointId,
-      eventType,
-      payload,
-      headers,
-      metadata,
-      source,
-      idempotencyKey
-    } = req.body;
-
     if (!req.orgAuth) {
       res.status(401).json({ message: "Unauthorized. Missing organization authorization context." });
       return;
@@ -21,48 +11,56 @@ export async function createEvent(req: ApiKeyRequest, res: Response) {
 
     const { organizationId } = req.orgAuth;
 
-    // 1. Basic validations
-    if (!endpointId || !eventType || !payload) {
-      res.status(400).json({ message: "endpointId, eventType, and payload are required." });
+    // Parse keys flexibly (handling both Eventype/eventType and data/payload)
+    const eventType = req.body.Eventype || req.body.eventType || req.body.event_type;
+    const payload = req.body.data || req.body.payload;
+
+    // 1. Basic validation
+    if (!eventType) {
+      res.status(400).json({ message: "Event type is required (specify 'Eventype' or 'eventType')." });
       return;
     }
 
-    // 2. Verify that the endpoint belongs to the authorized organization
-    const endpoint = await prisma.endpoint.findFirst({
+    if (!payload || typeof payload !== 'object') {
+      res.status(400).json({ message: "Event payload data is required (specify 'data' or 'payload' object)." });
+      return;
+    }
+
+    // 2. Fetch all active, unpaused endpoints registered for this organization
+    const endpoints = await prisma.endpoint.findMany({
       where: {
-        id: endpointId,
-        organizationId: organizationId,
-      }
-    });
-
-    if (!endpoint) {
-      res.status(404).json({ message: "Endpoint not found for this organization." });
-      return;
-    }
-
-    if (endpoint.isPaused || endpoint.status !== 'ACTIVE') {
-      res.status(400).json({ message: "Webhook delivery to this endpoint is paused or disabled." });
-      return;
-    }
-
-    // 3. Create the event in the database
-    const event = await prisma.event.create({
-      data: {
         organizationId,
-        endpointId,
-        eventType,
-        payload,
-        headers: headers || undefined,
-        metadata: metadata || undefined,
-        source: source || undefined,
-        idempotencyKey: idempotencyKey || undefined,
-        status: 'PENDING',
+        status: 'ACTIVE',
+        isPaused: false,
       }
     });
+
+    if (endpoints.length === 0) {
+      res.status(201).json({
+        message: "Event received, but no active webhook endpoints are registered for this organization.",
+        events: []
+      });
+      return;
+    }
+
+    // 3. Create a pending Event record for each active endpoint
+    const createdEvents = await Promise.all(
+      endpoints.map((endpoint) =>
+        prisma.event.create({
+          data: {
+            organizationId,
+            endpointId: endpoint.id,
+            eventType,
+            payload,
+            status: 'PENDING',
+          }
+        })
+      )
+    );
 
     res.status(201).json({
-      message: "Event registered successfully and queued for webhook delivery.",
-      event
+      message: `Event successfully dispatched to ${endpoints.length} active endpoint(s).`,
+      events: createdEvents
     });
 
   } catch (error: any) {
