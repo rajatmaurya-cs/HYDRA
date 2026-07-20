@@ -11,6 +11,7 @@ let producer: Producer | null = null;
 
 // Retrieve or initialize the Kafka Producer (Singleton pattern)
 export async function getProducer(): Promise<Producer> {
+  
   if (producer) return producer;
 
   producer = kafka.producer();
