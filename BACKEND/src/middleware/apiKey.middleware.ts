@@ -12,18 +12,17 @@ export interface ApiKeyRequest extends Request {
 
 export async function requireApiKey(req: ApiKeyRequest, res: Response, next: NextFunction) {
   try {
-   
-    let rawKey = req.headers['x-api-key'] || req.headers['x-api-key'.toLowerCase()];
+    let rawKey: string | undefined;
 
-    if (!rawKey && req.headers.authorization) {
+    if (req.headers.authorization) {
       const parts = (req.headers.authorization as string).split(' ');
       if (parts.length === 2 && parts[0].toLowerCase() === 'bearer') {
         rawKey = parts[1];
       }
     }
 
-    if (!rawKey || typeof rawKey !== 'string') {
-      res.status(401).json({ message: "Unauthorized. Missing API Key." });
+    if (!rawKey) {
+      res.status(401).json({ message: "Unauthorized. Missing or invalid Bearer API Key in Authorization header." });
       return;
     }
 

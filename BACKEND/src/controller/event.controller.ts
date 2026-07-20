@@ -11,19 +11,20 @@ export async function createEvent(req: ApiKeyRequest, res: Response) {
 
     const { organizationId } = req.orgAuth;
 
-    // Parse keys flexibly (handling both event/Eventype/eventType/event_type and data/payload)
-    const eventType = req.body.event || req.body.Eventype || req.body.eventType || req.body.event_type;
-    const payload = req.body.data || req.body.payload;
-    const idempotencyKey = (req.headers['idempotency-key'] as string) || req.body.idempotencyKey || req.body.idempotency_key;
+    // Strict parameter parsing matching the new customer specification
+    const eventType = req.body.event;
+    const payload = req.body.data;
+    const idempotencyKey = req.headers['idempotency-key'] as string | undefined;
+    const clientTimestamp = req.body.timestamp;
 
-    // 1. Basic validation
-    if (!eventType) {
-      res.status(400).json({ message: "Event type is required (specify 'event' or 'eventType')." });
+    // 1. Strict validation
+    if (!eventType || typeof eventType !== 'string') {
+      res.status(400).json({ message: "Invalid request. 'event' field is required in the body." });
       return;
     }
 
     if (!payload || typeof payload !== 'object') {
-      res.status(400).json({ message: "Event payload data is required (specify 'data' or 'payload' object)." });
+      res.status(400).json({ message: "Invalid request. 'data' object field is required in the body." });
       return;
     }
 
@@ -58,6 +59,7 @@ export async function createEvent(req: ApiKeyRequest, res: Response) {
             payload,
             idempotencyKey: idempotencyKey || undefined,
             status: 'PENDING',
+            metadata: clientTimestamp ? { clientTimestamp } : undefined,
           }
         })
       )
