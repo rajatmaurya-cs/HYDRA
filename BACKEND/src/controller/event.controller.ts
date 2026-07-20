@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import prisma from '../lib/prisma';
+import crypto from 'crypto';
 import { ApiKeyRequest } from '../middleware/apiKey.middleware';
 import { redisConnection } from '../lib/redis';
 import { produceMessage } from '../lib/kafka';
@@ -13,13 +13,13 @@ export async function createEvent(req: ApiKeyRequest, res: Response) {
 
     const { organizationId } = req.orgAuth;
 
-    // Strict parameter parsing matching the new customer specification
+    // Strict parameter parsing matching the customer specification
     const eventType = req.body.event;
     const payload = req.body.data;
     const idempotencyKey = req.headers['idempotency-key'] as string | undefined;
     const clientTimestamp = req.body.timestamp;
 
-    // 1. Strict validation
+    // 1. Quick Schema Validation
     if (!eventType || typeof eventType !== 'string') {
       res.status(400).json({ message: "Invalid request. 'event' field is required in the body." });
       return;
@@ -30,80 +30,63 @@ export async function createEvent(req: ApiKeyRequest, res: Response) {
       return;
     }
 
-    // 2. CHECK REDIS FOR IDEMPOTENCY KEY
-    let redisKey = '';
-    if (idempotencyKey) {
-      redisKey = `idempotency:${organizationId}:${idempotencyKey}`;
-      const duplicateExists = await redisConnection.get(redisKey);
-      if (duplicateExists) {
-        res.status(409).json({
-          message: "Duplicate request. This idempotency key has already been processed."
-        });
-        return;
-      }
+    // 2. Redis Rate Limiting (Limit: 100 requests per 10 seconds per organization)
+    const rateLimitWindow = Math.floor(Date.now() / 10000); // 10s window
+    const rateLimitKey = `ratelimit:${organizationId}:${rateLimitWindow}`;
+    
+    const requestsCount = await redisConnection.incr(rateLimitKey);
+    if (requestsCount === 1) {
+      await redisConnection.expire(rateLimitKey, 10);
     }
-
-    // 3. Fetch all active, unpaused endpoints registered for this organization that are subscribed to this eventType
-    const endpoints = await prisma.endpoint.findMany({
-      where: {
-        organizationId,
-        status: 'ACTIVE',
-        isPaused: false,
-        subscribedEvents: {
-          has: eventType,
-        }
-      }
-    });
-
-    if (endpoints.length === 0) {
-      res.status(201).json({
-        message: "Event received, but no active webhook endpoints are registered for this organization.",
-        events: []
-      });
+    
+    if (requestsCount > 100) {
+      res.status(429).json({ message: "Too many requests. Rate limit exceeded." });
       return;
     }
 
-    // 4. SAVE EVENT(S) IN DATABASE
-    const createdEvents = await Promise.all(
-      endpoints.map((endpoint) =>
-        prisma.event.create({
-          data: {
-            organizationId,
-            endpointId: endpoint.id,
-            eventType,
-            payload,
-            idempotencyKey: idempotencyKey || undefined,
-            status: 'PENDING',
-            metadata: clientTimestamp ? { clientTimestamp } : undefined,
-          }
-        })
-      )
-    );
+    // 3. Redis Idempotency Key Check
+    let redisKey = '';
+    let generatedEventId = `evt_${crypto.randomUUID().replace(/-/g, '')}`;
 
-    // 5. STORE IDEMPOTENCY KEY IN REDIS (24-hour expiration)
-    if (idempotencyKey && redisKey) {
-      await redisConnection.set(redisKey, 'processed', 'EX', 86400);
+    if (idempotencyKey) {
+      redisKey = `idempotency:${organizationId}:${idempotencyKey}`;
+      const existingEventId = await redisConnection.get(redisKey);
+      if (existingEventId) {
+        // Return duplicate response immediately with the cached/previously assigned event ID
+        res.status(202).json({
+          message: "Duplicate request. Event already accepted.",
+          eventId: existingEventId,
+          duplicate: true
+        });
+        return;
+      }
+      
+      // Store the key in Redis immediately to lock it (TTL: 24 hours)
+      await redisConnection.set(redisKey, generatedEventId, 'EX', 86400);
     }
 
-    // 6. PUBLISH TO KAFKA
-    try {
-      await Promise.all(
-        createdEvents.map((event) =>
-          produceMessage('webhook-events', event, event.id)
-        )
-      );
-      console.log(`📡 Successfully published ${createdEvents.length} event(s) to Kafka topic [webhook-events]`);
-    } catch (kafkaError) {
-      console.error("⚠️ Failed to publish events to Kafka, but they are saved in the DB:", kafkaError);
-    }
+    // 4. Publish ingestion payload directly to Kafka (Stateless, high-throughput)
+    const ingestPayload = {
+      eventId: generatedEventId,
+      organizationId,
+      eventType,
+      payload,
+      idempotencyKey,
+      clientTimestamp,
+      createdAt: new Date().toISOString(),
+    };
 
-    res.status(201).json({
-      message: `Event successfully dispatched to ${endpoints.length} active endpoint(s).`,
-      events: createdEvents
+    // Partition by idempotencyKey to ensure order consistency if needed, fallback to generatedEventId
+    await produceMessage('webhook-events', ingestPayload, idempotencyKey || generatedEventId);
+
+    // 5. Return 202 Accepted immediately
+    res.status(202).json({
+      message: "Event accepted and queued for processing.",
+      eventId: generatedEventId
     });
 
   } catch (error: any) {
-    console.error("Create event webhook error:", error);
+    console.error("Create event webhook ingestion error:", error);
     res.status(500).json({ message: "Internal server error." });
   }
 }
