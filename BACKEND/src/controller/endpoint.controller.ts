@@ -13,7 +13,8 @@ export async function createEndpoint(req: AuthenticatedRequest, res: Response) {
       timeoutSeconds,
       maxRetries,
       retryStrategy,
-      verifySSL
+      verifySSL,
+      subscribedEvents
     } = req.body;
 
     if (!req.user) {
@@ -56,6 +57,7 @@ export async function createEndpoint(req: AuthenticatedRequest, res: Response) {
         maxRetries: maxRetries ? parseInt(maxRetries) : undefined,
         retryStrategy: retryStrategy || undefined,
         verifySSL: verifySSL !== undefined ? !!verifySSL : undefined,
+        subscribedEvents: Array.isArray(subscribedEvents) ? subscribedEvents : [],
       }
     });
 

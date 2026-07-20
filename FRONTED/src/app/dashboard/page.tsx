@@ -44,6 +44,7 @@ export default function DashboardPage() {
   const [endpointName, setEndpointName] = useState("");
   const [endpointUrl, setEndpointUrl] = useState("");
   const [endpointDesc, setEndpointDesc] = useState("");
+  const [endpointEvents, setEndpointEvents] = useState("payment.success");
 
   // API Keys list & creation
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
@@ -143,6 +144,11 @@ export default function DashboardPage() {
       return;
     }
 
+    const parsedEvents = endpointEvents
+      .split(",")
+      .map((ev) => ev.trim())
+      .filter((ev) => ev.length > 0);
+
     setIsSubmitting(true);
     try {
       const response = await fetch("http://localhost:2000/api/endpoints", {
@@ -154,6 +160,7 @@ export default function DashboardPage() {
           name: endpointName,
           url: endpointUrl,
           description: endpointDesc || undefined,
+          subscribedEvents: parsedEvents,
         }),
       });
 
@@ -163,6 +170,7 @@ export default function DashboardPage() {
         setEndpointName("");
         setEndpointUrl("");
         setEndpointDesc("");
+        setEndpointEvents("payment.success");
         setShowEndpointModal(false);
         setSuccessMsg("Endpoint created successfully!");
       } else {
@@ -415,6 +423,17 @@ export default function DashboardPage() {
                   placeholder="https://api.yourdomain.com/webhooks"
                   value={endpointUrl}
                   onChange={(e) => setEndpointUrl(e.target.value)}
+                  className="px-4 py-2.5 bg-slate-900 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-indigo-500 text-white"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-300">Subscribed Events (comma-separated)</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="payment.success, user.created"
+                  value={endpointEvents}
+                  onChange={(e) => setEndpointEvents(e.target.value)}
                   className="px-4 py-2.5 bg-slate-900 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-indigo-500 text-white"
                 />
               </div>

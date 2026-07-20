@@ -34,6 +34,7 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [description, setDescription] = useState("");
+  const [eventsText, setEventsText] = useState("payment.success");
   const [formError, setFormError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -93,6 +94,11 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
       return;
     }
 
+    const parsedEvents = eventsText
+      .split(",")
+      .map((ev) => ev.trim())
+      .filter((ev) => ev.length > 0);
+
     setIsSubmitting(true);
     try {
       const response = await fetch("http://localhost:2000/api/endpoints", {
@@ -106,6 +112,7 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
           name,
           url,
           description: description || undefined,
+          subscribedEvents: parsedEvents,
         }),
       });
 
@@ -116,6 +123,7 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
         setName("");
         setUrl("");
         setDescription("");
+        setEventsText("payment.success");
         setShowForm(false);
       } else {
         setFormError(data.message || "Failed to create endpoint.");
@@ -224,6 +232,19 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
                   placeholder="https://api.yourdomain.com/webhooks"
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
+                  required
+                  className="w-full px-4 py-3 bg-slate-950/60 border border-white/10 rounded-xl text-white text-sm placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-semibold text-slate-300 tracking-wider uppercase">
+                  Subscribed Events (comma-separated)
+                </label>
+                <input
+                  type="text"
+                  placeholder="payment.success, user.created"
+                  value={eventsText}
+                  onChange={(e) => setEventsText(e.target.value)}
                   required
                   className="w-full px-4 py-3 bg-slate-950/60 border border-white/10 rounded-xl text-white text-sm placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all"
                 />

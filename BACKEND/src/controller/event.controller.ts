@@ -26,12 +26,15 @@ export async function createEvent(req: ApiKeyRequest, res: Response) {
       return;
     }
 
-    // 2. Fetch all active, unpaused endpoints registered for this organization
+    // 2. Fetch all active, unpaused endpoints registered for this organization that are subscribed to this eventType
     const endpoints = await prisma.endpoint.findMany({
       where: {
         organizationId,
         status: 'ACTIVE',
         isPaused: false,
+        subscribedEvents: {
+          has: eventType,
+        }
       }
     });
 
