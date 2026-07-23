@@ -1,0 +1,13 @@
+{
+  "name": "backend2",
+  "version": "1.0.0",
+  "description": "Test server for sending events to Hydra and receiving webhook notifications",
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
