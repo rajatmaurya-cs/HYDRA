@@ -32,6 +32,7 @@ export async function addWebhookJob(jobName: string, data: any) {
 
 // 2. Initialize a base Worker template (to be implemented/registered by services)
 export function createWebhookWorker(processor: (job: Job) => Promise<void>): Worker {
+  
   const worker = new Worker(WEBHOOK_QUEUE_NAME, processor, {
     connection: redisConnection,
     concurrency: 10, // Process up to 10 jobs concurrently

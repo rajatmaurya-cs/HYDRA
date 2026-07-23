@@ -77,7 +77,7 @@ export async function createEvent(req: ApiKeyRequest, res: Response) {
     };
 
     // Partition by idempotencyKey to ensure order consistency if needed, fallback to generatedEventId
-    await produceMessage('webhook-events', ingestPayload, idempotencyKey || generatedEventId);
+    await produceMessage('webhook-events', ingestPayload, idempotencyKey);
 
     // 5. Return 202 Accepted immediately
     res.status(202).json({

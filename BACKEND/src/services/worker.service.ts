@@ -1,16 +1,20 @@
 import crypto from 'crypto';
 import prisma from '../lib/prisma';
-import { createConsumer } from '../lib/kafka';
+import { createConsumer, ensureTopicExists } from '../lib/kafka';
 import { addWebhookJob, createWebhookWorker } from '../lib/queue';
 
 export async function startBackgroundServices() {
   console.log('📡 Initializing background event processing services...');
+
+  // Ensure topic exists in Kafka before Consumer subscribes
+  await ensureTopicExists('webhook-events');
 
   // 1. Initialize Kafka Consumer
   const consumer = createConsumer('hydra-delivery-group');
 
   try {
     await consumer.connect();
+    
     await consumer.subscribe({ topic: 'webhook-events', fromBeginning: true });
     
     console.log('✅ Kafka Consumer connected and subscribed to [webhook-events].');
@@ -21,6 +25,7 @@ export async function startBackgroundServices() {
 
         try {
           const rawData = JSON.parse(message.value.toString());
+          
           const { eventId, organizationId, eventType, payload, idempotencyKey, clientTimestamp } = rawData;
 
           // Find all active endpoints subscribed to this event type

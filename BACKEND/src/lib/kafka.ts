@@ -45,6 +45,31 @@ export async function produceMessage(topic: string, message: any, key?: string) 
   }
 }
 
+// Helper utility to ensure topic exists in Kafka
+export async function ensureTopicExists(topic: string) {
+  const admin = kafka.admin();
+  try {
+    await admin.connect();
+    const existingTopics = await admin.listTopics();
+    if (!existingTopics.includes(topic)) {
+      await admin.createTopics({
+        topics: [
+          {
+            topic,
+            numPartitions: 3,
+            replicationFactor: 1,
+          },
+        ],
+      });
+      console.log(`✅ Kafka Topic [${topic}] created automatically.`);
+    }
+  } catch (error) {
+    console.error(`⚠️ Kafka Admin error while ensuring topic [${topic}]:`, error);
+  } finally {
+    await admin.disconnect().catch(() => {});
+  }
+}
+
 // Helper utility to create a consumer instance
 export function createConsumer(groupId: string): Consumer {
   return kafka.consumer({ groupId });
