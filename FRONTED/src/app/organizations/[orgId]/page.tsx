@@ -456,7 +456,7 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
                         {key.environment}
                       </span>
                     </div>
-                    <code className="text-xs text-slate-400 font-mono">{key.prefix}••••••••••••</code>
+                    <code className="text-xs text-indigo-300 font-mono">Prefix: {key.prefix}</code>
                   </div>
                   <span className="text-[10px] text-slate-500">
                     {new Date(key.createdAt).toLocaleDateString()}

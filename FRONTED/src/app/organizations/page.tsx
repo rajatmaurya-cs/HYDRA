@@ -33,6 +33,8 @@ export default function OrganizationsPage() {
   const [billingEmail, setBillingEmail] = useState("");
   const [formError, setFormError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [createdApiKey, setCreatedApiKey] = useState("");
+  const [createdOrgName, setCreatedOrgName] = useState("");
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -110,6 +112,10 @@ export default function OrganizationsPage() {
       if (response.ok) {
         // Add new org to state
         setOrganizations((prev) => [...prev, data.organization]);
+        if (data.defaultApiKey) {
+          setCreatedApiKey(data.defaultApiKey);
+          setCreatedOrgName(data.organization.name);
+        }
         // Reset form
         setName("");
         setSlug("");
@@ -334,6 +340,54 @@ export default function OrganizationsPage() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Generated API Key Modal Popup */}
+        {createdApiKey && (
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4">
+            <div className="bg-slate-950 border border-white/10 rounded-2xl w-full max-w-md p-6 relative animate-fade-in">
+              <button
+                onClick={() => setCreatedApiKey("")}
+                className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+
+              <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mb-4">
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+
+              <h3 className="text-xl font-bold mb-1">Organization Created!</h3>
+              <p className="text-slate-400 text-xs mb-4">
+                Here is your default TEST API Key for <strong className="text-white">{createdOrgName}</strong>:
+              </p>
+
+              <div className="p-3 bg-slate-900 border border-white/10 rounded-xl flex items-center justify-between gap-2 mb-4">
+                <code className="text-xs font-mono text-indigo-300 select-all break-all">{createdApiKey}</code>
+                <button
+                  onClick={() => navigator.clipboard.writeText(createdApiKey)}
+                  className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer shrink-0"
+                >
+                  Copy
+                </button>
+              </div>
+
+              <p className="text-[11px] text-amber-400/90 bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-lg mb-4">
+                ⚠️ Store this API Key safely. You can use it in <code>Authorization: Bearer</code> headers.
+              </p>
+
+              <button
+                onClick={() => setCreatedApiKey("")}
+                className="w-full py-2.5 bg-white/10 hover:bg-white/15 text-white font-bold rounded-xl text-sm transition-all cursor-pointer"
+              >
+                Done
+              </button>
+            </div>
           </div>
         )}
       </div>
