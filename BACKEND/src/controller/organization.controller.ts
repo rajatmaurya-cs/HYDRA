@@ -41,7 +41,7 @@ export async function createOrganization(req: AuthenticatedRequest, res: Respons
     // Generate secure random webhook secret
     const webhookSecret = `whsec_${crypto.randomBytes(24).toString('hex')}`;
 
-    // Execute atomic transaction: Create Organization + Create Owner Membership
+    // Execute atomic transaction: Create Organization + Create Owner Membership + Auto-Generate Default TEST API Key
     const result = await prisma.$transaction(async (tx) => {
       const org = await tx.organization.create({
         data: {
@@ -62,12 +62,30 @@ export async function createOrganization(req: AuthenticatedRequest, res: Respons
         }
       });
 
-      return org;
+      // Auto-generate default TEST API Key
+      const secretBytes = crypto.randomBytes(32).toString('hex');
+      const rawApiKey = `hdr_test_${secretBytes}`;
+      const prefix = `hdr_test_${secretBytes.substring(0, 8)}`;
+      const hashedKey = crypto.createHash('sha256').update(rawApiKey).digest('hex');
+
+      await tx.apiKey.create({
+        data: {
+          organizationId: org.id,
+          createdById: req.user!.id,
+          name: 'Default Test Key',
+          prefix,
+          hashedKey,
+          environment: 'TEST',
+        }
+      });
+
+      return { org, rawApiKey };
     });
 
     res.status(201).json({
       message: "Organization created successfully.",
-      organization: result
+      organization: result.org,
+      defaultApiKey: result.rawApiKey
     });
 
   } catch (error: any) {

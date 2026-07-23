@@ -38,6 +38,7 @@ app.post('/webhook', (req, res) => {
 
 // 3. Helper Endpoint to trigger sending an event to Hydra (POST /v1/events)
 app.post('/send-event', async (req, res) => {
+  
   const { apiKey, event, data } = req.body;
 
   if (!apiKey) {

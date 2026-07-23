@@ -20,6 +20,14 @@ interface Endpoint {
   createdAt: string;
 }
 
+interface ApiKey {
+  id: string;
+  name: string;
+  prefix: string;
+  environment: string;
+  createdAt: string;
+}
+
 export default function OrganizationDetailPage({ params }: { params: Promise<{ orgId: string }> }) {
   const { orgId } = use(params);
   const { user, isLoading: authLoading } = useAuth();
@@ -27,6 +35,7 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
 
   const [org, setOrg] = useState<Organization | null>(null);
   const [endpoints, setEndpoints] = useState<Endpoint[]>([]);
+  const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Form state
@@ -75,6 +84,17 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
         if (endResponse.ok) {
           const endData = await endResponse.json();
           setEndpoints(endData.endpoints || []);
+        }
+
+        // 3. Fetch API keys
+        const keyResponse = await fetch(`http://localhost:2000/api/api-keys?organizationId=${orgId}`, {
+          method: "GET",
+          credentials: "include",
+        });
+
+        if (keyResponse.ok) {
+          const keyData = await keyResponse.json();
+          setApiKeys(keyData.apiKeys || []);
         }
       } else {
         router.push("/organizations"); // Redirect if org not found or forbidden
@@ -396,6 +416,56 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
             ))}
           </div>
         )}
+
+        {/* API Credentials Section */}
+        <div className="mt-12 pt-8 border-t border-white/10">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-xl font-bold">API Credentials</h2>
+              <p className="text-slate-400 text-xs mt-1">API keys configured for this organization.</p>
+            </div>
+            <button
+              onClick={() => router.push("/dashboard")}
+              className="px-3.5 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-semibold cursor-pointer transition-all"
+            >
+              Manage in Console →
+            </button>
+          </div>
+
+          {apiKeys.length === 0 ? (
+            <div className="text-center py-8 bg-white/[0.01] border border-white/[0.05] rounded-xl text-slate-500 text-sm">
+              No active API keys found.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {apiKeys.map((key) => (
+                <div
+                  key={key.id}
+                  className="p-4 bg-white/[0.02] border border-white/[0.06] rounded-xl flex items-center justify-between"
+                >
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-bold text-sm text-white">{key.name}</span>
+                      <span
+                        className={`text-[8px] font-bold px-1.5 py-0.5 rounded-md ${
+                          key.environment === "LIVE"
+                            ? "bg-amber-500/10 border border-amber-500/20 text-amber-400"
+                            : "bg-indigo-500/10 border border-indigo-500/20 text-indigo-400"
+                        }`}
+                      >
+                        {key.environment}
+                      </span>
+                    </div>
+                    <code className="text-xs text-slate-400 font-mono">{key.prefix}••••••••••••</code>
+                  </div>
+                  <span className="text-[10px] text-slate-500">
+                    {new Date(key.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
       </div>
     </div>
