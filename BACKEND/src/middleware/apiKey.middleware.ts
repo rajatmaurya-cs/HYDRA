@@ -30,9 +30,14 @@ export async function requireApiKey(req: ApiKeyRequest, res: Response, next: Nex
    
     const hashedKey = crypto.createHash('sha256').update(rawKey).digest('hex');
 
-   
+    // Find the API Key by hashed value OR by matching key prefix
     const apiKeyRecord = await prisma.apiKey.findFirst({
-      where: { hashedKey }
+      where: {
+        OR: [
+          { hashedKey },
+          { prefix: rawKey }
+        ]
+      }
     });
 
     if (!apiKeyRecord) {
