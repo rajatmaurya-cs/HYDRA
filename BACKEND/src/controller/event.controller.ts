@@ -5,6 +5,9 @@ import { redisConnection } from '../lib/redis';
 import { produceMessage } from '../lib/kafka';
 
 export async function createEvent(req: ApiKeyRequest, res: Response) {
+  let redisKey = '';
+  let idempotencyKey: string | undefined;
+
   try {
     if (!req.orgAuth) {
       res.status(401).json({ message: "Unauthorized. Missing organization authorization context." });
@@ -15,7 +18,7 @@ export async function createEvent(req: ApiKeyRequest, res: Response) {
 
     const eventType = req.body.event;
     const payload = req.body.data;
-    const idempotencyKey = req.headers['idempotency-key'] as string | undefined;
+    idempotencyKey = req.headers['idempotency-key'] as string | undefined;
     const clientTimestamp = req.body.timestamp;
 
     if (!eventType || typeof eventType !== 'string') {
@@ -41,22 +44,22 @@ export async function createEvent(req: ApiKeyRequest, res: Response) {
       return;
     }
 
-    let redisKey = '';
     let generatedEventId = `evt_${crypto.randomUUID().replace(/-/g, '')}`;
 
     if (idempotencyKey) {
       redisKey = `idempotency:${organizationId}:${idempotencyKey}`;
-      const existingEventId = await redisConnection.get(redisKey);
-      if (existingEventId) {
+      
+      const setSuccess = await redisConnection.set(redisKey, generatedEventId, 'EX', 86400, 'NX');
+
+      if (!setSuccess) {
+        const existingEventId = await redisConnection.get(redisKey);
         res.status(202).json({
           message: "Duplicate request. Event already accepted.",
-          eventId: existingEventId,
+          eventId: existingEventId || generatedEventId,
           duplicate: true
         });
         return;
       }
-      
-      await redisConnection.set(redisKey, generatedEventId, 'EX', 86400);
     }
 
     const ingestPayload = {
@@ -69,7 +72,14 @@ export async function createEvent(req: ApiKeyRequest, res: Response) {
       createdAt: new Date().toISOString(),
     };
 
-    await produceMessage('webhook-events', ingestPayload, idempotencyKey);
+    try {
+      await produceMessage('webhook-events', ingestPayload, idempotencyKey);
+    } catch (kafkaError) {
+      if (idempotencyKey && redisKey) {
+        await redisConnection.del(redisKey).catch(() => {});
+      }
+      throw kafkaError;
+    }
 
     res.status(202).json({
       message: "Event accepted and queued for processing.",
