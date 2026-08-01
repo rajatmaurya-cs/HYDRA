@@ -8,11 +8,9 @@ import {
   verifyRefreshToken
 } from '../utils/token';
 
-
 export async function userRegister(req: Request, res: Response) {
   try {
     const { name, email, password } = req.body;
-
 
     if (!name || !email || !password) {
        res.status(400).json({ message: "All fields (name, email, password) are required." });
@@ -24,10 +22,8 @@ export async function userRegister(req: Request, res: Response) {
        return;
     }
 
-   
     const normalizedEmail = email.toLowerCase().trim();
 
-  
     const existingUser = await prisma.user.findUnique({
       where: { email: normalizedEmail }
     });
@@ -37,12 +33,9 @@ export async function userRegister(req: Request, res: Response) {
        return;
     }
 
-   
     const salt = await bcrypt.genSalt(10);
-
     const passwordHash = await bcrypt.hash(password, salt);
 
-   
     const newUser = await prisma.user.create({
       data: {
         name,
@@ -51,7 +44,6 @@ export async function userRegister(req: Request, res: Response) {
       }
     });
 
-   
     const { passwordHash: _, ...userWithoutPassword } = newUser;
 
     res.status(201).json({
@@ -97,34 +89,31 @@ export async function userLogin(req: Request, res: Response) {
       return;
     }
 
-   
     const accessToken = generateAccessToken(user.id);
     const refreshToken = generateRefreshToken(user.id);
 
-  
     await prisma.refreshToken.create({
       data: {
         token: refreshToken,
         userId: user.id,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       }
     });
 
-  
     const isProduction = process.env.NODE_ENV === 'production';
 
     res.cookie('accessToken', accessToken, {
       httpOnly: true,
       secure: isProduction,
       sameSite: 'lax',
-      maxAge: 15 * 60 * 1000, // 15 minutes
+      maxAge: 15 * 60 * 1000,
     });
 
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
       secure: isProduction,
       sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
     const { passwordHash: _, ...userWithoutPassword } = user;
@@ -146,7 +135,6 @@ export async function userMe(req: Request, res: Response) {
 
     let userId: string | null = null;
 
-   
     if (accessToken) {
       const decodedAccess = verifyAccessToken(accessToken);
       if (decodedAccess) {
@@ -154,11 +142,9 @@ export async function userMe(req: Request, res: Response) {
       }
     }
 
-    
     if (!userId && refreshToken) {
       const decodedRefresh = verifyRefreshToken(refreshToken);
       if (decodedRefresh) {
-
         const dbRefreshToken = await prisma.refreshToken.findUnique({
           where: { token: refreshToken }
         });
@@ -166,7 +152,6 @@ export async function userMe(req: Request, res: Response) {
         if (dbRefreshToken && dbRefreshToken.expiresAt > new Date()) {
           userId = decodedRefresh.userId;
 
-          
           const newAccessToken = generateAccessToken(userId);
           const isProduction = process.env.NODE_ENV === 'production';
 
@@ -185,7 +170,6 @@ export async function userMe(req: Request, res: Response) {
       return;
     }
 
-   
     const user = await prisma.user.findUnique({
       where: { id: userId }
     });

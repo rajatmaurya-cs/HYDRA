@@ -16,7 +16,6 @@ export async function requireAuth(req: AuthenticatedRequest, res: Response, next
 
     let userId: string | null = null;
 
-    // 1. Try to verify Access Token
     if (accessToken) {
       const decodedAccess = verifyAccessToken(accessToken);
       if (decodedAccess) {
@@ -24,7 +23,6 @@ export async function requireAuth(req: AuthenticatedRequest, res: Response, next
       }
     }
 
-    // 2. If Access Token is expired, try Refresh Token
     if (!userId && refreshToken) {
       const decodedRefresh = verifyRefreshToken(refreshToken);
       if (decodedRefresh) {
@@ -35,9 +33,7 @@ export async function requireAuth(req: AuthenticatedRequest, res: Response, next
         if (dbRefreshToken && dbRefreshToken.expiresAt > new Date()) {
           userId = decodedRefresh.userId;
 
-          // Re-issue a new access token
           const newAccessToken = generateAccessToken(userId);
-          
           const isProduction = process.env.NODE_ENV === 'production';
 
           res.cookie('accessToken', newAccessToken, {
@@ -55,7 +51,6 @@ export async function requireAuth(req: AuthenticatedRequest, res: Response, next
        return;
     }
 
-    // 3. Fetch user and attach to request
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { id: true, name: true, email: true }

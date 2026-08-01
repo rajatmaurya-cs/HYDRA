@@ -53,7 +53,7 @@ export default function DashboardPage() {
   const [showKeyModal, setShowKeyModal] = useState(false);
   const [keyName, setKeyName] = useState("");
   const [keyEnv, setKeyEnv] = useState("TEST");
-  const [generatedKey, setGeneratedKey] = useState(""); // Plain text key shown exactly once
+  const [generatedKey, setGeneratedKey] = useState("");
 
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
@@ -95,7 +95,7 @@ export default function DashboardPage() {
         const orgList = data.organizations || [];
         setOrganizations(orgList);
         if (orgList.length > 0) {
-          setSelectedOrgId(orgList[0].id); // Auto-select first org
+          setSelectedOrgId(orgList[0].id);
         }
       }
     } catch (error) {
@@ -109,7 +109,6 @@ export default function DashboardPage() {
     setLoadingEndpoints(true);
     setLoadingKeys(true);
     try {
-      // Fetch Endpoints
       const endResponse = await fetch(`http://localhost:2000/api/endpoints?organizationId=${orgId}`, {
         method: "GET",
         credentials: "include",
@@ -119,7 +118,6 @@ export default function DashboardPage() {
         setEndpoints(endData.endpoints || []);
       }
 
-      // Fetch API Keys
       const keyResponse = await fetch(`http://localhost:2000/api/api-keys?organizationId=${orgId}`, {
         method: "GET",
         credentials: "include",
@@ -136,19 +134,19 @@ export default function DashboardPage() {
     }
   };
 
-  const handleAddEvent = (e?: React.MouseEvent) => {
+  const handleAddEventTag = (e?: React.MouseEvent) => {
     if (e) e.preventDefault();
-    const cleanEvent = eventInputText.trim();
-    if (!cleanEvent) return;
-    if (endpointEventsList.includes(cleanEvent)) {
+    const clean = eventInputText.trim();
+    if (!clean) return;
+    if (endpointEventsList.includes(clean)) {
       setEventInputText("");
       return;
     }
-    setEndpointEventsList((prev) => [...prev, cleanEvent]);
+    setEndpointEventsList((prev) => [...prev, clean]);
     setEventInputText("");
   };
 
-  const handleRemoveEvent = (eventToRemove: string) => {
+  const handleRemoveEventTag = (eventToRemove: string) => {
     setEndpointEventsList((prev) => prev.filter((ev) => ev !== eventToRemove));
   };
 
@@ -156,8 +154,9 @@ export default function DashboardPage() {
     e.preventDefault();
     setErrorMsg("");
     setSuccessMsg("");
-    if (!selectedOrgId) {
-      setErrorMsg("Please select an organization.");
+
+    if (!endpointName.trim() || !endpointUrl.trim()) {
+      setErrorMsg("Name and Webhook URL are required.");
       return;
     }
 
@@ -182,15 +181,16 @@ export default function DashboardPage() {
       });
 
       const data = await response.json();
+
       if (response.ok) {
         setEndpoints((prev) => [...prev, data.endpoint]);
+        setSuccessMsg("Webhook endpoint registered successfully!");
         setEndpointName("");
         setEndpointUrl("");
         setEndpointDesc("");
         setEndpointEventsList(["payment.success"]);
         setEventInputText("");
         setShowEndpointModal(false);
-        setSuccessMsg("Endpoint created successfully!");
       } else {
         setErrorMsg(data.message || "Failed to create endpoint.");
       }
@@ -205,9 +205,9 @@ export default function DashboardPage() {
     e.preventDefault();
     setErrorMsg("");
     setSuccessMsg("");
-    setGeneratedKey("");
-    if (!selectedOrgId) {
-      setErrorMsg("Please select an organization.");
+
+    if (!keyName.trim()) {
+      setErrorMsg("API key name is required.");
       return;
     }
 
@@ -225,11 +225,11 @@ export default function DashboardPage() {
       });
 
       const data = await response.json();
+
       if (response.ok) {
-        setApiKeys((prev) => [...prev, data.apiKey]);
-        setGeneratedKey(data.rawKey); // Store plain text raw key to display once
+        setApiKeys((prev) => [data.apiKey, ...prev]);
+        setGeneratedKey(data.rawKey);
         setKeyName("");
-        // Keep keyModal open to show the raw API key!
       } else {
         setErrorMsg(data.message || "Failed to generate API Key.");
       }
@@ -242,104 +242,111 @@ export default function DashboardPage() {
 
   if (authLoading || (!user && !authLoading)) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-950 text-white">
-        <div className="w-8 h-8 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+      <div className="flex items-center justify-center min-h-screen bg-white text-black">
+        <div className="w-6 h-6 border-2 border-neutral-300 border-t-black rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-indigo-950/40 via-slate-950 to-black text-white pt-24 pb-12 px-6 md:px-12 font-sans">
+    <div className="min-h-screen bg-white text-neutral-900 pt-24 pb-12 px-6 md:px-12 font-sans">
       <div className="max-w-6xl mx-auto">
         
         {/* Top bar with Select Organization dropdown */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-white/10 pb-6 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-neutral-200/80 pb-5 mb-8">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-white via-slate-100 to-indigo-200 bg-clip-text text-transparent">
+            <h1 className="text-2xl font-medium tracking-tight text-neutral-900">
               Developer Console
             </h1>
-            <p className="text-slate-400 text-sm mt-1">Manage endpoints and credentials.</p>
+            <p className="text-neutral-500 text-xs mt-1 font-normal">
+              Manage webhook dispatchers and API authorization credentials.
+            </p>
           </div>
 
           <div className="flex items-center gap-3">
-            <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Active Org:</label>
+            <label className="text-xs font-normal uppercase tracking-wider text-neutral-600">
+              Org:
+            </label>
             {loadingOrgs ? (
-              <div className="w-24 h-8 bg-white/5 rounded-lg animate-pulse" />
-            ) : organizations.length === 0 ? (
-              <button
-                onClick={() => router.push("/organizations")}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-xl text-xs font-semibold"
-              >
-                Create an Org First
-              </button>
+              <div className="w-4 h-4 border-2 border-neutral-300 border-t-black rounded-full animate-spin" />
             ) : (
               <select
                 value={selectedOrgId}
                 onChange={(e) => setSelectedOrgId(e.target.value)}
-                className="bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 cursor-pointer"
+                className="px-3 py-1.5 bg-neutral-50 border border-neutral-300 rounded-md text-neutral-900 text-xs font-normal focus:outline-none focus:border-black cursor-pointer"
               >
                 {organizations.map((org) => (
                   <option key={org.id} value={org.id}>
-                    {org.name}
+                    {org.name} ({org.slug})
                   </option>
                 ))}
               </select>
             )}
+            <button
+              onClick={() => router.push("/organizations")}
+              className="px-3 py-1.5 bg-black hover:bg-neutral-800 text-white rounded-md text-xs font-normal transition-all cursor-pointer"
+            >
+              + New Org
+            </button>
           </div>
         </div>
 
-        {/* Global Alerts */}
-        {successMsg && (
-          <div className="p-4 mb-6 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm">
-            {successMsg}
+        {/* Global Notifications */}
+        {errorMsg && (
+          <div className="p-3.5 mb-6 rounded-md bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center justify-between font-normal">
+            <span>{errorMsg}</span>
+            <button onClick={() => setErrorMsg("")} className="font-normal cursor-pointer">✕</button>
           </div>
         )}
-        {errorMsg && (
-          <div className="p-4 mb-6 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-sm">
-            {errorMsg}
+        {successMsg && (
+          <div className="p-3.5 mb-6 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center justify-between font-normal">
+            <span>{successMsg}</span>
+            <button onClick={() => setSuccessMsg("")} className="font-normal cursor-pointer">✕</button>
           </div>
         )}
 
-        {/* Main Dashboard Panels */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Console Grid Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-7">
           
-          {/* Endpoints Panel */}
-          <div className="bg-white/[0.01] border border-white/[0.06] rounded-2xl p-6 flex flex-col justify-between">
+          {/* Webhook Endpoints Panel */}
+          <div className="bg-neutral-50/70 border border-neutral-200 rounded-xl p-5 flex flex-col justify-between">
             <div>
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-lg font-bold">Webhooks Endpoints</h2>
-                {selectedOrgId && (
-                  <button
-                    onClick={() => setShowEndpointModal(true)}
-                    className="px-3.5 py-1.5 bg-indigo-500 hover:bg-indigo-600 rounded-xl text-xs font-semibold flex items-center gap-1 cursor-pointer"
-                  >
-                    + Add Endpoint
-                  </button>
-                )}
+              <div className="flex items-center justify-between pb-4 border-b border-neutral-200/80 mb-5">
+                <div>
+                  <h2 className="text-base font-medium text-neutral-900">Webhook Endpoints</h2>
+                  <p className="text-xs text-neutral-500 font-normal">Destinations receiving HTTP webhooks</p>
+                </div>
+                <button
+                  onClick={() => setShowEndpointModal(true)}
+                  disabled={!selectedOrgId}
+                  className="px-3 py-1.5 bg-black hover:bg-neutral-800 text-white text-xs font-normal rounded-md transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  + Add Endpoint
+                </button>
               </div>
 
               {loadingEndpoints ? (
                 <div className="flex justify-center py-8">
-                  <div className="w-6 h-6 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+                  <div className="w-5 h-5 border-2 border-neutral-300 border-t-black rounded-full animate-spin" />
                 </div>
               ) : endpoints.length === 0 ? (
-                <div className="text-center py-12 text-slate-500 text-sm">
-                  No endpoints configured. Webhooks events will have nowhere to deliver.
+                <div className="text-center py-8 text-neutral-500 text-xs font-normal">
+                  No endpoints configured for this organization.
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
                   {endpoints.map((ep) => (
-                    <div key={ep.id} className="p-4 bg-white/[0.02] border border-white/[0.05] rounded-xl hover:bg-white/[0.04] transition-all">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-bold text-sm">{ep.name}</span>
-                        <span className="text-[9px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full uppercase">
+                    <div key={ep.id} className="p-4 bg-white border border-neutral-200/90 rounded-lg hover:border-neutral-400 transition-all">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-medium text-xs text-neutral-900">{ep.name}</span>
+                        <span className="text-[9px] font-normal text-neutral-600 bg-neutral-100 border border-neutral-200 px-2 py-0.5 rounded uppercase">
                           {ep.status}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-400 font-mono break-all">{ep.url}</p>
-                      <div className="text-[10px] text-slate-500 mt-2 flex items-center justify-between">
-                        <span>Secret: <code className="text-slate-400 font-mono">{ep.secret.substring(0, 12)}...</code></span>
-                        <span>Added {new Date(ep.createdAt).toLocaleDateString()}</span>
+                      <code className="text-xs text-neutral-600 font-mono break-all block mb-2 font-normal">{ep.url}</code>
+                      <div className="text-[10px] text-neutral-400 flex justify-between font-normal">
+                        <span>Secret: <code className="text-neutral-800 bg-neutral-100 px-1.5 py-0.5 rounded font-mono">{ep.secret}</code></span>
+                        <span>{new Date(ep.createdAt).toLocaleDateString()}</span>
                       </div>
                     </div>
                   ))}
@@ -348,52 +355,58 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* API Keys Panel */}
-          <div className="bg-white/[0.01] border border-white/[0.06] rounded-2xl p-6 flex flex-col justify-between">
+          {/* API Credentials Panel */}
+          <div className="bg-neutral-50/70 border border-neutral-200 rounded-xl p-5 flex flex-col justify-between">
             <div>
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-lg font-bold">API Credentials</h2>
-                {selectedOrgId && (
-                  <button
-                    onClick={() => {
-                      setGeneratedKey("");
-                      setShowKeyModal(true);
-                    }}
-                    className="px-3.5 py-1.5 bg-indigo-500 hover:bg-indigo-600 rounded-xl text-xs font-semibold flex items-center gap-1 cursor-pointer"
-                  >
-                    + Generate Key
-                  </button>
-                )}
+              <div className="flex items-center justify-between pb-4 border-b border-neutral-200/80 mb-5">
+                <div>
+                  <h2 className="text-base font-medium text-neutral-900">API Credentials</h2>
+                  <p className="text-xs text-neutral-500 font-normal">Bearer tokens for request ingestion</p>
+                </div>
+                <button
+                  onClick={() => setShowKeyModal(true)}
+                  disabled={!selectedOrgId}
+                  className="px-3 py-1.5 bg-black hover:bg-neutral-800 text-white text-xs font-normal rounded-md transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  + Generate Key
+                </button>
               </div>
 
               {loadingKeys ? (
                 <div className="flex justify-center py-8">
-                  <div className="w-6 h-6 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+                  <div className="w-5 h-5 border-2 border-neutral-300 border-t-black rounded-full animate-spin" />
                 </div>
               ) : apiKeys.length === 0 ? (
-                <div className="text-center py-12 text-slate-500 text-sm">
-                  No active API Keys. Create a key to access the Hydra developer APIs.
+                <div className="text-center py-8 text-neutral-500 text-xs font-normal">
+                  No active API keys found.
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
                   {apiKeys.map((key) => (
-                    <div key={key.id} className="p-4 bg-white/[0.02] border border-white/[0.05] rounded-xl hover:bg-white/[0.04] transition-all flex items-center justify-between">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1.5">
-                          <span className="font-bold text-sm">{key.name}</span>
-                          <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-md ${
-                            key.environment === 'LIVE' 
-                              ? 'bg-amber-500/10 border border-amber-500/20 text-amber-400' 
-                              : 'bg-indigo-500/10 border border-indigo-500/20 text-indigo-400'
-                          }`}>
+                    <div key={key.id} className="p-4 bg-white border border-neutral-200/90 rounded-lg hover:border-neutral-400 transition-all flex flex-col gap-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-xs text-neutral-900">{key.name}</span>
+                          <span className="text-[9px] font-normal text-neutral-600 bg-neutral-100 border border-neutral-200 px-1.5 py-0.5 rounded">
                             {key.environment}
                           </span>
                         </div>
-                        <code className="text-xs text-indigo-300 font-mono">Prefix: {key.prefix}</code>
+                        <span className="text-[10px] text-neutral-400 font-normal">
+                          {new Date(key.createdAt).toLocaleDateString()}
+                        </span>
                       </div>
-                      <span className="text-[10px] text-slate-500 self-end">
-                        Issued {new Date(key.createdAt).toLocaleDateString()}
-                      </span>
+
+                      <div className="flex items-center justify-between gap-2 mt-1">
+                        <code className="text-xs text-neutral-900 font-mono font-normal select-all break-all bg-neutral-50 px-2 py-1 rounded border border-neutral-200 flex-1">
+                          {key.prefix}
+                        </code>
+                        <button
+                          onClick={() => navigator.clipboard.writeText(key.prefix)}
+                          className="px-2.5 py-1 bg-black hover:bg-neutral-800 text-white rounded text-[10px] font-normal shrink-0 cursor-pointer"
+                        >
+                          Copy
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -403,206 +416,194 @@ export default function DashboardPage() {
 
         </div>
 
-      </div>
+        {/* Modal: Create Webhook Endpoint */}
+        {showEndpointModal && (
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+            <div className="bg-white border border-neutral-200 rounded-xl w-full max-w-lg p-6 relative shadow-xl">
+              <button
+                onClick={() => setShowEndpointModal(false)}
+                className="absolute top-4 right-4 text-neutral-400 hover:text-black transition-colors cursor-pointer"
+              >
+                ✕
+              </button>
 
-      {/* ─── CREATE ENDPOINT MODAL ─── */}
-      {showEndpointModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-950 border border-white/10 rounded-2xl w-full max-w-md p-6 relative animate-fade-in">
-            <button
-              onClick={() => {
-                setShowEndpointModal(false);
-                setErrorMsg("");
-              }}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white cursor-pointer"
-            >
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-            <h3 className="text-lg font-bold mb-4">Add Webhook Endpoint</h3>
-            <form onSubmit={handleCreateEndpoint} className="space-y-4">
-              <div className="flex flex-col gap-1">
-                <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-300">Endpoint Name</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Production Webhook Receiver"
-                  value={endpointName}
-                  onChange={(e) => setEndpointName(e.target.value)}
-                  className="px-4 py-2.5 bg-slate-900 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-indigo-500 text-white"
-                />
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-300">Endpoint URL</label>
-                <input
-                  type="url"
-                  required
-                  placeholder="https://api.yourdomain.com/webhooks"
-                  value={endpointUrl}
-                  onChange={(e) => setEndpointUrl(e.target.value)}
-                  className="px-4 py-2.5 bg-slate-900 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-indigo-500 text-white"
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-300">Subscribed Events</label>
-                <div className="flex gap-2">
+              <h3 className="text-base font-medium text-neutral-900 mb-4">Register Webhook Endpoint</h3>
+
+              <form onSubmit={handleCreateEndpoint} className="space-y-4 font-normal">
+                <div>
+                  <label className="text-[11px] font-medium text-neutral-700 uppercase tracking-wider block mb-1">
+                    Endpoint Name
+                  </label>
                   <input
                     type="text"
-                    placeholder="e.g. payment.success"
-                    value={eventInputText}
-                    onChange={(e) => setEventInputText(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        handleAddEvent();
-                      }
-                    }}
-                    className="flex-1 px-4 py-2.5 bg-slate-900 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-indigo-500 text-white"
+                    placeholder="e.g. Primary Ingestion Webhook"
+                    value={endpointName}
+                    onChange={(e) => setEndpointName(e.target.value)}
+                    required
+                    className="w-full px-3.5 py-2 bg-white border border-neutral-300 rounded-md text-neutral-900 text-xs placeholder-neutral-400 focus:outline-none focus:border-black font-normal"
                   />
-                  <button
-                    type="button"
-                    onClick={() => handleAddEvent()}
-                    className="px-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center justify-center cursor-pointer transition-all"
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                    </svg>
-                  </button>
                 </div>
-                {/* Event tag pills */}
-                {endpointEventsList.length > 0 && (
-                  <div className="mt-2.5 bg-slate-900/60 border border-white/10 rounded-xl p-3 space-y-1.5 w-fit min-w-[240px]">
-                    <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider block mb-0.5">
-                      Active Subscriptions ({endpointEventsList.length})
-                    </span>
-                    <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+
+                <div>
+                  <label className="text-[11px] font-medium text-neutral-700 uppercase tracking-wider block mb-1">
+                    Webhook Target URL
+                  </label>
+                  <input
+                    type="url"
+                    placeholder="http://localhost:4000/webhook"
+                    value={endpointUrl}
+                    onChange={(e) => setEndpointUrl(e.target.value)}
+                    required
+                    className="w-full px-3.5 py-2 bg-white border border-neutral-300 rounded-md text-neutral-900 text-xs placeholder-neutral-400 focus:outline-none focus:border-black font-normal"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-medium text-neutral-700 uppercase tracking-wider block mb-1">
+                    Subscribed Events
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="payment.success"
+                      value={eventInputText}
+                      onChange={(e) => setEventInputText(e.target.value)}
+                      className="flex-1 px-3 py-2 bg-white border border-neutral-300 rounded-md text-neutral-900 text-xs placeholder-neutral-400 focus:outline-none focus:border-black font-normal"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleAddEventTag()}
+                      className="px-3 bg-black hover:bg-neutral-800 text-white text-xs font-normal rounded-md cursor-pointer transition-all"
+                    >
+                      + Add
+                    </button>
+                  </div>
+                  {endpointEventsList.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
                       {endpointEventsList.map((ev) => (
-                        <div
-                          key={ev}
-                          className="flex items-center justify-between bg-white/[0.01] border border-white/[0.05] hover:bg-white/[0.03] px-3 py-2 rounded-lg transition-all"
-                        >
-                          <code className="text-xs text-indigo-300 font-mono">{ev}</code>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveEvent(ev)}
-                            className="text-slate-500 hover:text-rose-400 transition-colors cursor-pointer p-0.5"
-                            title={`Remove ${ev}`}
-                          >
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          </button>
-                        </div>
+                        <span key={ev} className="inline-flex items-center gap-1.5 bg-neutral-100 border border-neutral-200 text-neutral-800 font-mono text-xs px-2.5 py-0.5 rounded">
+                          {ev}
+                          <button type="button" onClick={() => handleRemoveEventTag(ev)} className="hover:text-rose-600">✕</button>
+                        </span>
                       ))}
                     </div>
-                  </div>
-                )}
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-300">Description (Optional)</label>
-                <textarea
-                  placeholder="Receiver for transaction state change webhooks."
-                  value={endpointDesc}
-                  onChange={(e) => setEndpointDesc(e.target.value)}
-                  rows={2}
-                  className="px-4 py-2.5 bg-slate-900 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-indigo-500 text-white resize-none"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full py-2.5 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white rounded-xl font-bold text-sm cursor-pointer disabled:opacity-60 flex items-center justify-center gap-2"
-              >
-                {isSubmitting ? "Adding..." : "Add Endpoint"}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ─── CREATE API KEY MODAL ─── */}
-      {showKeyModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-950 border border-white/10 rounded-2xl w-full max-w-md p-6 relative animate-fade-in">
-            <button
-              onClick={() => {
-                setShowKeyModal(false);
-                setGeneratedKey("");
-                setErrorMsg("");
-              }}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white cursor-pointer"
-            >
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-            <h3 className="text-lg font-bold mb-4">Generate API Key</h3>
-
-            {generatedKey ? (
-              <div className="space-y-4">
-                <div className="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-xl text-xs leading-relaxed">
-                  ⚠️ <strong>Save this key now!</strong> For security reasons, you cannot retrieve it again once this modal is closed.
+                  )}
                 </div>
-                <div className="p-3 bg-slate-900 border border-white/10 rounded-xl flex items-center justify-between">
-                  <code className="text-xs font-mono text-white select-all break-all">{generatedKey}</code>
+
+                <div className="flex justify-end gap-2 pt-2">
                   <button
-                    onClick={() => navigator.clipboard.writeText(generatedKey)}
-                    className="p-1.5 hover:bg-white/5 rounded-lg text-slate-400 hover:text-white transition-all cursor-pointer"
-                    title="Copy to Clipboard"
+                    type="button"
+                    onClick={() => setShowEndpointModal(false)}
+                    className="px-3.5 py-1.5 bg-white border border-neutral-300 text-neutral-700 text-xs font-normal rounded-md hover:bg-neutral-50 cursor-pointer"
                   >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                    </svg>
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="px-4 py-1.5 bg-black text-white text-xs font-normal rounded-md cursor-pointer disabled:opacity-50"
+                  >
+                    {isSubmitting ? "Creating..." : "Save Endpoint"}
                   </button>
                 </div>
-                <button
-                  onClick={() => {
-                    setShowKeyModal(false);
-                    setGeneratedKey("");
-                  }}
-                  className="w-full py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-xl text-sm font-semibold cursor-pointer"
-                >
-                  I've saved it
-                </button>
-              </div>
-            ) : (
-              <form onSubmit={handleCreateApiKey} className="space-y-4">
-                <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-300">Key Name</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Backend Server Key"
-                    value={keyName}
-                    onChange={(e) => setKeyName(e.target.value)}
-                    className="px-4 py-2.5 bg-slate-900 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-indigo-500 text-white"
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-300">Environment</label>
-                  <select
-                    value={keyEnv}
-                    onChange={(e) => setKeyEnv(e.target.value)}
-                    className="px-4 py-2.5 bg-slate-900 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-indigo-500 text-white cursor-pointer"
-                  >
-                    <option value="TEST">TEST</option>
-                    <option value="LIVE">LIVE</option>
-                  </select>
-                </div>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full py-2.5 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white rounded-xl font-bold text-sm cursor-pointer disabled:opacity-60 flex items-center justify-center gap-2"
-                >
-                  {isSubmitting ? "Generating..." : "Generate Key"}
-                </button>
               </form>
-            )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
+        {/* Modal: Generate API Key */}
+        {showKeyModal && (
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+            <div className="bg-white border border-neutral-200 rounded-xl w-full max-w-md p-6 relative shadow-xl font-normal">
+              <button
+                onClick={() => {
+                  setShowKeyModal(false);
+                  setGeneratedKey("");
+                }}
+                className="absolute top-4 right-4 text-neutral-400 hover:text-black transition-colors cursor-pointer"
+              >
+                ✕
+              </button>
+
+              <h3 className="text-base font-medium text-neutral-900 mb-4">Generate API Key</h3>
+
+              {generatedKey ? (
+                <div className="space-y-4">
+                  <p className="text-xs text-neutral-600 font-normal">
+                    Here is your newly generated API Key. Copy it now:
+                  </p>
+                  <div className="p-3 bg-neutral-50 border border-neutral-200 rounded-md flex items-center justify-between gap-2">
+                    <code className="text-xs font-mono text-neutral-900 select-all break-all font-normal">{generatedKey}</code>
+                    <button
+                      onClick={() => navigator.clipboard.writeText(generatedKey)}
+                      className="px-2.5 py-1 bg-black text-white rounded text-xs font-normal cursor-pointer shrink-0"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowKeyModal(false);
+                      setGeneratedKey("");
+                    }}
+                    className="w-full py-2 bg-black hover:bg-neutral-800 text-white font-normal rounded-md text-xs cursor-pointer"
+                  >
+                    Done
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handleCreateApiKey} className="space-y-4">
+                  <div>
+                    <label className="text-[11px] font-medium text-neutral-700 uppercase tracking-wider block mb-1">
+                      Key Name
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Backend Production Ingestion"
+                      value={keyName}
+                      onChange={(e) => setKeyName(e.target.value)}
+                      required
+                      className="w-full px-3.5 py-2 bg-white border border-neutral-300 rounded-md text-neutral-900 text-xs placeholder-neutral-400 focus:outline-none focus:border-black font-normal"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-medium text-neutral-700 uppercase tracking-wider block mb-1">
+                      Environment
+                    </label>
+                    <select
+                      value={keyEnv}
+                      onChange={(e) => setKeyEnv(e.target.value)}
+                      className="w-full px-3.5 py-2 bg-white border border-neutral-300 rounded-md text-neutral-900 text-xs font-normal focus:outline-none focus:border-black cursor-pointer"
+                    >
+                      <option value="TEST">TEST</option>
+                      <option value="LIVE">LIVE</option>
+                    </select>
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowKeyModal(false)}
+                      className="px-3.5 py-1.5 bg-white border border-neutral-300 text-neutral-700 text-xs font-normal rounded-md hover:bg-neutral-50 cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="px-4 py-1.5 bg-black hover:bg-neutral-800 text-white text-xs font-normal rounded-md cursor-pointer disabled:opacity-50"
+                    >
+                      {isSubmitting ? "Generating..." : "Generate Key"}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          </div>
+        )}
+
+      </div>
     </div>
   );
 }

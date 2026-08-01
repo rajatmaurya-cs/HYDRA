@@ -8,7 +8,7 @@ export const redisConnection = new Redis({
   host: redisHost,
   port: redisPort,
   password: redisPassword,
-  maxRetriesPerRequest: null, // Critical requirement for BullMQ
+  maxRetriesPerRequest: null,
 });
 
 redisConnection.on('connect', () => {

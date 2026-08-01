@@ -1,24 +1,21 @@
 import { Queue, Worker, Job } from 'bullmq';
 import { redisConnection } from './redis';
 
-// Name of our webhook delivery queue
 export const WEBHOOK_QUEUE_NAME = 'webhook-delivery-queue';
 
-// 1. Initialize BullMQ Queue
 export const webhookQueue = new Queue(WEBHOOK_QUEUE_NAME, {
   connection: redisConnection,
   defaultJobOptions: {
     attempts: 5,
     backoff: {
       type: 'exponential',
-      delay: 5000, // Wait 5s, 10s, 20s...
+      delay: 5000,
     },
-    removeOnComplete: true, // Auto clean successfully completed jobs
-    removeOnFail: false,   // Keep failed jobs in DB for debug/history analysis
+    removeOnComplete: true,
+    removeOnFail: false,
   },
 });
 
-// Helper utility to add jobs to the queue
 export async function addWebhookJob(jobName: string, data: any) {
   try {
     const job = await webhookQueue.add(jobName, data);
@@ -30,12 +27,10 @@ export async function addWebhookJob(jobName: string, data: any) {
   }
 }
 
-// 2. Initialize a base Worker template (to be implemented/registered by services)
 export function createWebhookWorker(processor: (job: Job) => Promise<void>): Worker {
-  
   const worker = new Worker(WEBHOOK_QUEUE_NAME, processor, {
     connection: redisConnection,
-    concurrency: 10, // Process up to 10 jobs concurrently
+    concurrency: 10,
   });
 
   worker.on('completed', (job: Job) => {

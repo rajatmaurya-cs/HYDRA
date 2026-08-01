@@ -17,7 +17,6 @@ export async function createOrganization(req: AuthenticatedRequest, res: Respons
       return;
     }
 
-    // Normalize slug: lowercase and strip spaces/invalid characters
     const normalizedSlug = slug
       .toLowerCase()
       .trim()
@@ -28,7 +27,6 @@ export async function createOrganization(req: AuthenticatedRequest, res: Respons
       return;
     }
 
-    // Check if slug is unique
     const existingOrg = await prisma.organization.findUnique({
       where: { slug: normalizedSlug }
     });
@@ -38,10 +36,8 @@ export async function createOrganization(req: AuthenticatedRequest, res: Respons
       return;
     }
 
-    // Generate secure random webhook secret
     const webhookSecret = `whsec_${crypto.randomBytes(24).toString('hex')}`;
 
-    // Execute atomic transaction: Create Organization + Create Owner Membership + Auto-Generate Default TEST API Key
     const result = await prisma.$transaction(async (tx) => {
       const org = await tx.organization.create({
         data: {
@@ -62,10 +58,9 @@ export async function createOrganization(req: AuthenticatedRequest, res: Respons
         }
       });
 
-      // Auto-generate default TEST API Key
       const secretBytes = crypto.randomBytes(32).toString('hex');
       const rawApiKey = `hdr_test_${secretBytes}`;
-      const prefix = `hdr_test_${secretBytes.substring(0, 8)}`;
+      const prefix = rawApiKey;
       const hashedKey = crypto.createHash('sha256').update(rawApiKey).digest('hex');
 
       await tx.apiKey.create({
@@ -101,7 +96,6 @@ export async function getUserOrganizations(req: AuthenticatedRequest, res: Respo
       return;
     }
 
-    // Get all organizations where the user is a member
     const memberships = await prisma.membership.findMany({
       where: { userId: req.user.id },
       include: {
@@ -134,7 +128,6 @@ export async function getOrganizationById(req: AuthenticatedRequest, res: Respon
       return;
     }
 
-    // Find the organization if the user is a member
     const org = await prisma.organization.findFirst({
       where: {
         id: orgId,

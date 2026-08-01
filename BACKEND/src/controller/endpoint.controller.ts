@@ -27,7 +27,6 @@ export async function createEndpoint(req: AuthenticatedRequest, res: Response) {
       return;
     }
 
-    // 1. Verify that the user is a member of the organization
     const membership = await prisma.membership.findUnique({
       where: {
         organizationId_userId: {
@@ -42,10 +41,8 @@ export async function createEndpoint(req: AuthenticatedRequest, res: Response) {
       return;
     }
 
-    // 2. Generate a secure secret for signing Webhook requests sent to this endpoint
     const secret = `whsec_${crypto.randomBytes(24).toString('hex')}`;
 
-    // 3. Create the endpoint
     const endpoint = await prisma.endpoint.create({
       data: {
         organizationId,
@@ -86,7 +83,6 @@ export async function getEndpoints(req: AuthenticatedRequest, res: Response) {
       return;
     }
 
-    // Verify membership
     const membership = await prisma.membership.findUnique({
       where: {
         organizationId_userId: {

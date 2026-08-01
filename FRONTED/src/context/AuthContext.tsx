@@ -22,9 +22,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-
   const [user, setUser] = useState<User | null>(null);
-
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchCurrentUser = async () => {
@@ -34,7 +32,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         headers: {
           "Content-Type": "application/json",
         },
-        // CRITICAL: credentials 'include' forces browser to send/receive cookies (like accessToken/refreshToken)
         credentials: "include",
       });
 

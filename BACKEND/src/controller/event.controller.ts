@@ -13,13 +13,11 @@ export async function createEvent(req: ApiKeyRequest, res: Response) {
 
     const { organizationId } = req.orgAuth;
 
-    // Strict parameter parsing matching the customer specification
     const eventType = req.body.event;
     const payload = req.body.data;
     const idempotencyKey = req.headers['idempotency-key'] as string | undefined;
     const clientTimestamp = req.body.timestamp;
 
-    // 1. Quick Schema Validation
     if (!eventType || typeof eventType !== 'string') {
       res.status(400).json({ message: "Invalid request. 'event' field is required in the body." });
       return;
@@ -30,8 +28,7 @@ export async function createEvent(req: ApiKeyRequest, res: Response) {
       return;
     }
 
-    // 2. Redis Rate Limiting (Limit: 100 requests per 10 seconds per organization)
-    const rateLimitWindow = Math.floor(Date.now() / 10000); // 10s window
+    const rateLimitWindow = Math.floor(Date.now() / 10000);
     const rateLimitKey = `ratelimit:${organizationId}:${rateLimitWindow}`;
     
     const requestsCount = await redisConnection.incr(rateLimitKey);
@@ -44,7 +41,6 @@ export async function createEvent(req: ApiKeyRequest, res: Response) {
       return;
     }
 
-    // 3. Redis Idempotency Key Check
     let redisKey = '';
     let generatedEventId = `evt_${crypto.randomUUID().replace(/-/g, '')}`;
 
@@ -52,7 +48,6 @@ export async function createEvent(req: ApiKeyRequest, res: Response) {
       redisKey = `idempotency:${organizationId}:${idempotencyKey}`;
       const existingEventId = await redisConnection.get(redisKey);
       if (existingEventId) {
-        // Return duplicate response immediately with the cached/previously assigned event ID
         res.status(202).json({
           message: "Duplicate request. Event already accepted.",
           eventId: existingEventId,
@@ -61,11 +56,9 @@ export async function createEvent(req: ApiKeyRequest, res: Response) {
         return;
       }
       
-      // Store the key in Redis immediately to lock it (TTL: 24 hours)
       await redisConnection.set(redisKey, generatedEventId, 'EX', 86400);
     }
 
-    // 4. Publish ingestion payload directly to Kafka (Stateless, high-throughput)
     const ingestPayload = {
       eventId: generatedEventId,
       organizationId,
@@ -76,10 +69,8 @@ export async function createEvent(req: ApiKeyRequest, res: Response) {
       createdAt: new Date().toISOString(),
     };
 
-    // Partition by idempotencyKey to ensure order consistency if needed, fallback to generatedEventId
     await produceMessage('webhook-events', ingestPayload, idempotencyKey);
 
-    // 5. Return 202 Accepted immediately
     res.status(202).json({
       message: "Event accepted and queued for processing.",
       eventId: generatedEventId

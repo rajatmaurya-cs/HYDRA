@@ -9,9 +9,7 @@ export const kafka = new Kafka({
 
 let producer: Producer | null = null;
 
-// Retrieve or initialize the Kafka Producer (Singleton pattern)
 export async function getProducer(): Promise<Producer> {
-  
   if (producer) return producer;
 
   producer = kafka.producer();
@@ -26,7 +24,6 @@ export async function getProducer(): Promise<Producer> {
   return producer;
 }
 
-// Helper utility to send messages to a topic
 export async function produceMessage(topic: string, message: any, key?: string) {
   try {
     const prod = await getProducer();
@@ -45,7 +42,6 @@ export async function produceMessage(topic: string, message: any, key?: string) 
   }
 }
 
-// Helper utility to ensure topic exists in Kafka
 export async function ensureTopicExists(topic: string) {
   const admin = kafka.admin();
   try {
@@ -70,7 +66,6 @@ export async function ensureTopicExists(topic: string) {
   }
 }
 
-// Helper utility to create a consumer instance
 export function createConsumer(groupId: string): Consumer {
   return kafka.consumer({ groupId });
 }

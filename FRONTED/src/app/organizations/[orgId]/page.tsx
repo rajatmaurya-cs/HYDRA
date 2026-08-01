@@ -65,7 +65,6 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
   const fetchDetails = async () => {
     try {
       setLoading(true);
-      // 1. Fetch organization details
       const orgResponse = await fetch(`http://localhost:2000/api/organizations/${orgId}`, {
         method: "GET",
         credentials: "include",
@@ -75,7 +74,6 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
         const orgData = await orgResponse.json();
         setOrg(orgData.organization);
 
-        // 2. Fetch endpoints
         const endResponse = await fetch(`http://localhost:2000/api/endpoints?organizationId=${orgId}`, {
           method: "GET",
           credentials: "include",
@@ -86,7 +84,6 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
           setEndpoints(endData.endpoints || []);
         }
 
-        // 3. Fetch API keys
         const keyResponse = await fetch(`http://localhost:2000/api/api-keys?organizationId=${orgId}`, {
           method: "GET",
           credentials: "include",
@@ -97,7 +94,7 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
           setApiKeys(keyData.apiKeys || []);
         }
       } else {
-        router.push("/organizations"); // Redirect if org not found or forbidden
+        router.push("/organizations");
       }
     } catch (error) {
       console.error("Failed to load details:", error);
@@ -175,8 +172,8 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
 
   if (authLoading || loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-950 text-white">
-        <div className="w-8 h-8 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+      <div className="flex items-center justify-center min-h-screen bg-white text-black">
+        <div className="w-6 h-6 border-2 border-neutral-300 border-t-black rounded-full animate-spin" />
       </div>
     );
   }
@@ -184,35 +181,35 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
   if (!org) return null;
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-indigo-950/40 via-slate-950 to-black text-white pt-24 pb-12 px-6 md:px-12 font-sans">
+    <div className="min-h-screen bg-white text-neutral-900 pt-24 pb-12 px-6 md:px-12 font-sans">
       <div className="max-w-4xl mx-auto">
         
         {/* Back Link & Header */}
         <button
           onClick={() => router.push("/organizations")}
-          className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors mb-6 text-sm cursor-pointer"
+          className="flex items-center gap-1.5 text-neutral-500 hover:text-neutral-900 transition-colors mb-5 text-xs cursor-pointer font-normal"
         >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
           </svg>
           Back to Organizations
         </button>
 
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-white/10 pb-6 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-neutral-200/80 pb-5 mb-8">
           <div>
-            <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-indigo-200 bg-clip-text text-transparent">
+            <h1 className="text-2xl font-medium tracking-tight text-neutral-900">
               {org.name}
             </h1>
-            <p className="text-slate-400 text-sm mt-1">
-              Configure and manage Webhooks endpoints for <code>/{org.slug}</code>
+            <p className="text-neutral-500 text-xs mt-1 font-normal">
+              Configure endpoints and credentials for <code className="bg-neutral-100 px-1.5 py-0.5 rounded text-neutral-800 font-mono">/{org.slug}</code>
             </p>
           </div>
           {!showForm && (
             <button
               onClick={() => setShowForm(true)}
-              className="px-5 py-2.5 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 rounded-xl text-sm font-semibold shadow-lg shadow-indigo-500/10 hover:shadow-indigo-500/20 transition-all active:scale-95 cursor-pointer flex items-center gap-2 self-start sm:self-auto"
+              className="px-3.5 py-1.5 bg-black hover:bg-neutral-800 text-white rounded-md text-xs font-normal transition-all active:scale-95 cursor-pointer flex items-center gap-1.5 self-start sm:self-auto"
             >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
               Add Endpoint
@@ -222,33 +219,30 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
 
         {/* Add Endpoint Form Card */}
         {showForm && (
-          <div className="bg-white/[0.02] backdrop-blur-xl border border-white/[0.08] rounded-2xl p-6 md:p-8 mb-8 animate-fade-in relative">
+          <div className="bg-neutral-50/70 border border-neutral-200 rounded-xl p-6 mb-8 relative">
             <button
               onClick={() => {
                 setShowForm(false);
                 setFormError("");
               }}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors cursor-pointer"
+              className="absolute top-4 right-4 text-neutral-400 hover:text-black transition-colors cursor-pointer"
             >
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
 
-            <h2 className="text-xl font-bold mb-4">Add Webhook Endpoint</h2>
+            <h2 className="text-base font-medium text-neutral-900 mb-4">Add Webhook Endpoint</h2>
 
             {formError && (
-              <div className="p-4 mb-6 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-sm flex items-center gap-2">
-                <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                </svg>
-                <span>{formError}</span>
+              <div className="p-3 mb-5 rounded-md bg-rose-50 border border-rose-200 text-rose-700 text-xs font-normal">
+                {formError}
               </div>
             )}
 
-            <form onSubmit={handleCreateEndpoint} className="space-y-5">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-semibold text-slate-300 tracking-wider uppercase">
+            <form onSubmit={handleCreateEndpoint} className="space-y-4">
+              <div className="flex flex-col gap-1">
+                <label className="text-[11px] font-medium text-neutral-700 uppercase tracking-wider">
                   Endpoint Name
                 </label>
                 <input
@@ -257,12 +251,12 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
-                  className="w-full px-4 py-3 bg-slate-950/60 border border-white/10 rounded-xl text-white text-sm placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                  className="w-full px-3.5 py-2 bg-white border border-neutral-300 rounded-md text-neutral-900 text-xs placeholder-neutral-400 focus:outline-none focus:border-black font-normal"
                 />
               </div>
 
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-semibold text-slate-300 tracking-wider uppercase">
+              <div className="flex flex-col gap-1">
+                <label className="text-[11px] font-medium text-neutral-700 uppercase tracking-wider">
                   Webhook URL
                 </label>
                 <input
@@ -271,11 +265,12 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
                   required
-                  className="w-full px-4 py-3 bg-slate-950/60 border border-white/10 rounded-xl text-white text-sm placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                  className="w-full px-3.5 py-2 bg-white border border-neutral-300 rounded-md text-neutral-900 text-xs placeholder-neutral-400 focus:outline-none focus:border-black font-normal"
                 />
               </div>
-              <div className="flex flex-col gap-2">
-                <label className="text-[11px] font-semibold text-slate-300 tracking-wider uppercase">
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-medium text-neutral-700 uppercase tracking-wider">
                   Subscribed Events
                 </label>
                 <div className="flex gap-2">
@@ -290,38 +285,36 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
                         handleAddEvent();
                       }
                     }}
-                    className="flex-1 px-4 py-3 bg-slate-950/60 border border-white/10 rounded-xl text-white text-sm placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                    className="flex-1 px-3.5 py-2 bg-white border border-neutral-300 rounded-md text-neutral-900 text-xs placeholder-neutral-400 focus:outline-none focus:border-black font-normal"
                   />
                   <button
                     type="button"
                     onClick={() => handleAddEvent()}
-                    className="px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold flex items-center justify-center cursor-pointer transition-all hover:shadow-indigo-500/10"
+                    className="px-3 bg-black hover:bg-neutral-800 text-white rounded-md text-xs font-normal flex items-center justify-center cursor-pointer transition-all"
                   >
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                    </svg>
+                    + Add
                   </button>
                 </div>
                 {/* Event tag pills */}
                 {subscribedEvents.length > 0 && (
-                  <div className="mt-3 bg-slate-950/60 border border-white/10 rounded-xl p-3.5 space-y-2 w-fit min-w-[240px]">
-                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">
+                  <div className="mt-2 bg-white border border-neutral-200/90 rounded-lg p-3 space-y-2 w-fit min-w-[240px]">
+                    <span className="text-[10px] font-normal text-neutral-400 uppercase tracking-wider block mb-1">
                       Active Subscriptions ({subscribedEvents.length})
                     </span>
-                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
                       {subscribedEvents.map((ev) => (
                         <div
                           key={ev}
-                          className="flex items-center justify-between bg-white/[0.02] border border-white/[0.05] hover:bg-white/[0.04] px-3.5 py-2.5 rounded-xl transition-all"
+                          className="flex items-center justify-between bg-neutral-50 border border-neutral-200/80 px-2.5 py-1 rounded transition-all gap-3"
                         >
-                          <code className="text-xs text-indigo-300 font-mono">{ev}</code>
+                          <code className="text-xs text-neutral-800 font-mono font-normal">{ev}</code>
                           <button
                             type="button"
                             onClick={() => handleRemoveEvent(ev)}
-                            className="text-slate-500 hover:text-rose-400 transition-colors cursor-pointer p-0.5"
+                            className="text-neutral-400 hover:text-rose-600 transition-colors cursor-pointer"
                             title={`Remove ${ev}`}
                           >
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                             </svg>
                           </button>
@@ -332,8 +325,8 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
                 )}
               </div>
 
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-semibold text-slate-300 tracking-wider uppercase">
+              <div className="flex flex-col gap-1">
+                <label className="text-[11px] font-medium text-neutral-700 uppercase tracking-wider">
                   Description (Optional)
                 </label>
                 <textarea
@@ -341,34 +334,27 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   rows={2}
-                  className="w-full px-4 py-3 bg-slate-950/60 border border-white/10 rounded-xl text-white text-sm placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all resize-none"
+                  className="w-full px-3.5 py-2 bg-white border border-neutral-300 rounded-md text-neutral-900 text-xs placeholder-neutral-400 focus:outline-none focus:border-black resize-none font-normal"
                 />
               </div>
 
-              <div className="flex justify-end gap-3">
+              <div className="flex justify-end gap-2 pt-1">
                 <button
                   type="button"
                   onClick={() => {
                     setShowForm(false);
                     setFormError("");
                   }}
-                  className="px-5 py-2.5 bg-white/[0.04] border border-white/10 rounded-xl text-sm font-semibold text-slate-300 hover:text-white hover:bg-white/[0.08] transition-all cursor-pointer"
+                  className="px-3.5 py-1.5 bg-white border border-neutral-300 rounded-md text-xs font-normal text-neutral-700 hover:text-black hover:bg-neutral-50 transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2.5 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white rounded-xl text-sm font-semibold shadow-lg shadow-indigo-500/10 active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
+                  className="px-4 py-1.5 bg-black hover:bg-neutral-800 text-white rounded-md text-xs font-normal transition-all disabled:opacity-60 cursor-pointer"
                 >
-                  {isSubmitting ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white/30 rounded-full border-t-white animate-spin" />
-                      Adding...
-                    </>
-                  ) : (
-                    "Add Endpoint"
-                  )}
+                  {isSubmitting ? "Adding..." : "Add Endpoint"}
                 </button>
               </div>
             </form>
@@ -377,38 +363,35 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
 
         {/* Endpoints List */}
         {endpoints.length === 0 ? (
-          <div className="text-center py-16 bg-white/[0.01] border border-white/[0.05] rounded-2xl p-8">
-            <svg className="w-12 h-12 text-slate-500 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-            </svg>
-            <h3 className="text-lg font-bold">No webhook endpoints found</h3>
-            <p className="text-slate-400 text-sm mt-1 mb-6">
+          <div className="text-center py-14 bg-neutral-50/50 border border-neutral-200/80 rounded-xl p-6">
+            <h3 className="text-sm font-medium text-neutral-900">No webhook endpoints found</h3>
+            <p className="text-neutral-500 text-xs mt-1 mb-5 font-normal">
               You haven't configured any endpoints for this organization.
             </p>
             <button
               onClick={() => setShowForm(true)}
-              className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 rounded-xl text-sm font-semibold shadow-lg shadow-indigo-600/10 active:scale-95 transition-all cursor-pointer"
+              className="px-4 py-2 bg-black hover:bg-neutral-800 text-white rounded-md text-xs font-normal transition-all cursor-pointer"
             >
               Add Your First Endpoint
             </button>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3.5">
             {endpoints.map((ep) => (
               <div
                 key={ep.id}
-                className="bg-white/[0.02] border border-white/[0.08] hover:border-indigo-500/30 p-6 rounded-2xl transition-all flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+                className="bg-white border border-neutral-200 hover:border-neutral-400 p-5 rounded-xl transition-all flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
               >
                 <div>
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="font-bold text-base text-white">{ep.name}</h3>
-                    <span className="text-[9px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                  <div className="flex items-center gap-2.5 mb-1">
+                    <h3 className="font-medium text-sm text-neutral-900">{ep.name}</h3>
+                    <span className="text-[9px] font-normal text-neutral-600 bg-neutral-100 border border-neutral-200 px-2 py-0.5 rounded uppercase">
                       {ep.status}
                     </span>
                   </div>
-                  <code className="text-xs text-indigo-300 font-mono break-all">{ep.url}</code>
-                  <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-[11px] text-slate-500">
-                    <span>Secret: <code className="text-slate-400 bg-white/5 px-2 py-0.5 rounded font-mono">{ep.secret}</code></span>
+                  <code className="text-xs text-neutral-600 font-mono break-all font-normal">{ep.url}</code>
+                  <div className="mt-2.5 flex flex-wrap items-center gap-x-5 gap-y-1 text-[11px] text-neutral-400 font-normal">
+                    <span>Secret: <code className="text-neutral-700 bg-neutral-100 px-1.5 py-0.5 rounded font-mono">{ep.secret}</code></span>
                     <span>Created {new Date(ep.createdAt).toLocaleDateString()}</span>
                   </div>
                 </div>
@@ -418,49 +401,54 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
         )}
 
         {/* API Credentials Section */}
-        <div className="mt-12 pt-8 border-t border-white/10">
-          <div className="flex items-center justify-between mb-6">
+        <div className="mt-12 pt-7 border-t border-neutral-200/80">
+          <div className="flex items-center justify-between mb-5">
             <div>
-              <h2 className="text-xl font-bold">API Credentials</h2>
-              <p className="text-slate-400 text-xs mt-1">API keys configured for this organization.</p>
+              <h2 className="text-lg font-medium text-neutral-900">API Credentials</h2>
+              <p className="text-neutral-500 text-xs mt-0.5 font-normal">API keys configured for this organization.</p>
             </div>
             <button
               onClick={() => router.push("/dashboard")}
-              className="px-3.5 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-semibold cursor-pointer transition-all"
+              className="px-3 py-1.5 bg-neutral-100 hover:bg-neutral-200/80 border border-neutral-200 rounded-md text-xs font-normal text-neutral-800 transition-all cursor-pointer"
             >
               Manage in Console →
             </button>
           </div>
 
           {apiKeys.length === 0 ? (
-            <div className="text-center py-8 bg-white/[0.01] border border-white/[0.05] rounded-xl text-slate-500 text-sm">
+            <div className="text-center py-7 bg-neutral-50/50 border border-neutral-200/80 rounded-lg text-neutral-500 text-xs font-normal">
               No active API keys found.
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
               {apiKeys.map((key) => (
                 <div
                   key={key.id}
-                  className="p-4 bg-white/[0.02] border border-white/[0.06] rounded-xl flex items-center justify-between"
+                  className="p-4 bg-white border border-neutral-200 rounded-lg flex flex-col gap-2"
                 >
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-bold text-sm text-white">{key.name}</span>
-                      <span
-                        className={`text-[8px] font-bold px-1.5 py-0.5 rounded-md ${
-                          key.environment === "LIVE"
-                            ? "bg-amber-500/10 border border-amber-500/20 text-amber-400"
-                            : "bg-indigo-500/10 border border-indigo-500/20 text-indigo-400"
-                        }`}
-                      >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-xs text-neutral-900">{key.name}</span>
+                      <span className="text-[9px] font-normal px-1.5 py-0.5 rounded bg-neutral-100 border border-neutral-200 text-neutral-700">
                         {key.environment}
                       </span>
                     </div>
-                    <code className="text-xs text-indigo-300 font-mono">Prefix: {key.prefix}</code>
+                    <span className="text-[10px] text-neutral-400 font-normal">
+                      {new Date(key.createdAt).toLocaleDateString()}
+                    </span>
                   </div>
-                  <span className="text-[10px] text-slate-500">
-                    {new Date(key.createdAt).toLocaleDateString()}
-                  </span>
+
+                  <div className="flex items-center justify-between gap-2 mt-1">
+                    <code className="text-xs text-neutral-900 font-mono font-normal select-all break-all bg-neutral-50 px-2 py-1.5 rounded border border-neutral-200 flex-1">
+                      {key.prefix}
+                    </code>
+                    <button
+                      onClick={() => navigator.clipboard.writeText(key.prefix)}
+                      className="px-2.5 py-1.5 bg-black hover:bg-neutral-800 text-white rounded text-xs font-normal shrink-0 cursor-pointer"
+                    >
+                      Copy Key
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

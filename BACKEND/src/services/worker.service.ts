@@ -2,14 +2,13 @@ import crypto from 'crypto';
 import prisma from '../lib/prisma';
 import { createConsumer, ensureTopicExists } from '../lib/kafka';
 import { addWebhookJob, createWebhookWorker } from '../lib/queue';
+import { canRequest, recordFailure, recordSuccess } from '../lib/circuitBreaker';
 
 export async function startBackgroundServices() {
   console.log('📡 Initializing background event processing services...');
 
-  // Ensure topic exists in Kafka before Consumer subscribes
   await ensureTopicExists('webhook-events');
 
-  // 1. Initialize Kafka Consumer
   const consumer = createConsumer('hydra-delivery-group');
 
   try {
@@ -28,7 +27,6 @@ export async function startBackgroundServices() {
           
           const { eventId, organizationId, eventType, payload, idempotencyKey, clientTimestamp } = rawData;
 
-          // Find all active endpoints subscribed to this event type
           const endpoints = await prisma.endpoint.findMany({
             where: {
               organizationId,
@@ -45,28 +43,10 @@ export async function startBackgroundServices() {
             return;
           }
 
-          // Process each endpoint subscription
           for (const endpoint of endpoints) {
-            // Double-protection idempotency check at the DB level
-            if (idempotencyKey) {
-              const existingEvent = await prisma.event.findFirst({
-                where: {
-                  organizationId,
-                  endpointId: endpoint.id,
-                  idempotencyKey,
-                }
-              });
-
-              if (existingEvent) {
-                console.log(`⚠️ Event skipped. Idempotency duplicate found in DB for endpoint [${endpoint.id}].`);
-                continue;
-              }
-            }
-
-            // Create Event record in Postgres
             const dbEvent = await prisma.event.create({
               data: {
-                id: `${eventId}_${endpoint.id}`, // Unique ID per target endpoint delivery
+                id: `${eventId}_${endpoint.id}`,
                 organizationId,
                 endpointId: endpoint.id,
                 eventType,
@@ -77,7 +57,6 @@ export async function startBackgroundServices() {
               }
             });
 
-            // Enqueue delivery job in BullMQ
             await addWebhookJob(dbEvent.id, { eventId: dbEvent.id });
           }
 
@@ -91,12 +70,10 @@ export async function startBackgroundServices() {
     console.error('❌ Failed to bootstrap Kafka consumer:', kafkaError);
   }
 
-  // 2. Initialize BullMQ Worker
   createWebhookWorker(async (job) => {
     const { eventId } = job.data;
     if (!eventId) return;
 
-    // Fetch event from Postgres
     const event = await prisma.event.findUnique({
       where: { id: eventId },
       include: { endpoint: true },
@@ -112,15 +89,20 @@ export async function startBackgroundServices() {
       return;
     }
 
-    // Mark event as processing
+    const allowed = await canRequest(event.endpointId);
+    if (!allowed) {
+      console.log(`⚡ Circuit Breaker OPEN for endpoint [${event.endpointId}]. Delivery request blocked until cooldown finishes.`);
+      throw new Error(`Circuit Breaker is OPEN for endpoint [${event.endpointId}]. Request paused.`);
+    }
+
     await prisma.event.update({
       where: { id: event.id },
       data: { status: 'PROCESSING' },
     });
 
-    // Prepare HTTP request webhook headers
     const timestamp = Date.now();
     const signaturePayload = `${timestamp}.${JSON.stringify(event.payload)}`;
+    
     const signature = crypto
       .createHmac('sha256', event.endpoint.secret)
       .update(signaturePayload)
@@ -146,14 +128,16 @@ export async function startBackgroundServices() {
       });
 
       if (response.ok) {
-        // Success
+        await recordSuccess(event.endpointId);
+
         await prisma.event.update({
           where: { id: event.id },
           data: { status: 'DELIVERED' },
         });
         console.log(`✅ Webhook delivered successfully to ${event.endpoint.url}. Status: ${response.status}`);
       } else {
-        // Retry scenario: Non-2xx status
+        await recordFailure(event.endpointId);
+
         await prisma.event.update({
           where: { id: event.id },
           data: { status: 'FAILED' },
@@ -162,12 +146,13 @@ export async function startBackgroundServices() {
       }
 
     } catch (networkError: any) {
+      await recordFailure(event.endpointId);
+
       console.error(`❌ Webhook delivery attempt failed for ${event.endpoint.url}:`, networkError.message);
       await prisma.event.update({
         where: { id: event.id },
         data: { status: 'FAILED' },
       });
-      // Rethrow error to trigger BullMQ's automatic backoff retry mechanism
       throw networkError;
     }
   });
