@@ -14,14 +14,6 @@ model Endpoint {
 
   status EndpointStatus @default(ACTIVE)
 
-  timeoutSeconds Int @default(15)
-
-  maxRetries Int @default(8)
-
-  retryStrategy RetryStrategy @default(EXPONENTIAL)
-
-  verifySSL Boolean @default(true)
-
   isPaused Boolean @default(false)
 
   createdAt DateTime @default(now())
@@ -39,12 +31,4 @@ enum EndpointStatus {
   DISABLED
 
   ARCHIVED
-}
-
-enum RetryStrategy {
-  FIXED
-
-  LINEAR
-
-  EXPONENTIAL
 }

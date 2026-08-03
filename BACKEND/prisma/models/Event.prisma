@@ -11,17 +11,11 @@ model Event {
 
   payload Json
 
-  headers Json?
-
   metadata Json?
-
-  source String?
 
   idempotencyKey String?
 
   status EventStatus @default(PENDING)
-
-  scheduledAt DateTime @default(now())
 
   createdAt DateTime @default(now())
 
@@ -32,7 +26,6 @@ model Event {
   outboxRecord Outbox?
 
   @@index([status])
-  @@index([scheduledAt])
   @@index([endpointId])
 }
 

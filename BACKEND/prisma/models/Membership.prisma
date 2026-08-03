@@ -9,8 +9,6 @@ model Membership {
 
   role Role
 
-  invitedById String?
-
   createdAt DateTime @default(now())
 
   @@unique([organizationId, userId])

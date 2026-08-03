@@ -7,6 +7,7 @@ const POLL_INTERVAL_MS = 3000;
 let isRelayRunning = false;
 
 export async function processOutboxEvents() {
+  
   if (isRelayRunning) return;
   isRelayRunning = true;
 
