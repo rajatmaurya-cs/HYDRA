@@ -1,56 +1,50 @@
 model Endpoint {
+  id String @id @default(cuid())
 
-  id                  String @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
 
-  organizationId      String
-  organization         Organization @relation(fields:[organizationId], references:[id])
+  name String
 
-  name                String
+  url String
 
-  url                 String
+  description String?
 
-  description         String?
+  secret String
 
-  secret              String
+  status EndpointStatus @default(ACTIVE)
 
-  status              EndpointStatus @default(ACTIVE)
+  timeoutSeconds Int @default(15)
 
-  timeoutSeconds      Int @default(15)
+  maxRetries Int @default(8)
 
-  maxRetries          Int @default(8)
+  retryStrategy RetryStrategy @default(EXPONENTIAL)
 
-  retryStrategy       RetryStrategy @default(EXPONENTIAL)
+  verifySSL Boolean @default(true)
 
-  verifySSL           Boolean @default(true)
+  isPaused Boolean @default(false)
 
-  isPaused            Boolean @default(false)
+  createdAt DateTime @default(now())
 
-  createdAt           DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  updatedAt           DateTime @updatedAt
+  subscribedEvents String[]
 
-  subscribedEvents    String[]
-
-  events              Event[]
-
+  events Event[]
 }
 
 enum EndpointStatus {
+  ACTIVE
 
-ACTIVE
+  DISABLED
 
-DISABLED
-
-ARCHIVED
-
+  ARCHIVED
 }
 
 enum RetryStrategy {
+  FIXED
 
-FIXED
+  LINEAR
 
-LINEAR
-
-EXPONENTIAL
-
+  EXPONENTIAL
 }

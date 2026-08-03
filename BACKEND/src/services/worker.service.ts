@@ -3,6 +3,7 @@ import prisma from '../lib/prisma';
 import { createConsumer, ensureTopicExists } from '../lib/kafka';
 import { addWebhookJob, createWebhookWorker } from '../lib/queue';
 import { canRequest, recordFailure, recordSuccess } from '../lib/circuitBreaker';
+import { getSubscribedEndpoints, getEndpointMetadata } from '../lib/endpointCache';
 
 export async function startBackgroundServices() {
   console.log('📡 Initializing background event processing services...');
@@ -27,28 +28,19 @@ export async function startBackgroundServices() {
           
           const { eventId, organizationId, eventType, payload, idempotencyKey, clientTimestamp } = rawData;
 
-          const endpoints = await prisma.endpoint.findMany({
-            where: {
-              organizationId,
-              status: 'ACTIVE',
-              isPaused: false,
-              subscribedEvents: {
-                has: eventType,
-              }
-            }
-          });
+          const endpointIds = await getSubscribedEndpoints(organizationId, eventType);
 
-          if (endpoints.length === 0) {
+          if (endpointIds.length === 0) {
             console.log(`ℹ️ Event [${eventType}] has no active subscriptions for org [${organizationId}].`);
             return;
           }
 
-          for (const endpoint of endpoints) {
+          for (const endpointId of endpointIds) {
             const dbEvent = await prisma.event.create({
               data: {
-                id: `${eventId}_${endpoint.id}`,
+                id: `${eventId}_${endpointId}`,
                 organizationId,
-                endpointId: endpoint.id,
+                endpointId,
                 eventType,
                 payload,
                 idempotencyKey: idempotencyKey || undefined,
@@ -76,7 +68,6 @@ export async function startBackgroundServices() {
 
     const event = await prisma.event.findUnique({
       where: { id: eventId },
-      include: { endpoint: true },
     });
 
     if (!event) {
@@ -84,12 +75,25 @@ export async function startBackgroundServices() {
       return;
     }
 
-    if (event.endpoint.isPaused || event.endpoint.status !== 'ACTIVE') {
+    if (!event.endpointId) {
+      console.error(`❌ BullMQ: Event [${eventId}] missing endpointId association.`);
+      return;
+    }
+
+    const endpoint = await getEndpointMetadata(event.endpointId);
+
+    if (!endpoint) {
+      console.error(`❌ BullMQ: Endpoint metadata [${event.endpointId}] not found.`);
+      return;
+    }
+
+    if (endpoint.isPaused || endpoint.status !== 'ACTIVE') {
       console.log(`ℹ️ Webhook delivery skipped. Endpoint [${event.endpointId}] is paused or disabled.`);
       return;
     }
 
     const allowed = await canRequest(event.endpointId);
+
     if (!allowed) {
       console.log(`⚡ Circuit Breaker OPEN for endpoint [${event.endpointId}]. Delivery request blocked until cooldown finishes.`);
       throw new Error(`Circuit Breaker is OPEN for endpoint [${event.endpointId}]. Request paused.`);
@@ -101,10 +105,11 @@ export async function startBackgroundServices() {
     });
 
     const timestamp = Date.now();
+    
     const signaturePayload = `${timestamp}.${JSON.stringify(event.payload)}`;
     
     const signature = crypto
-      .createHmac('sha256', event.endpoint.secret)
+      .createHmac('sha256', endpoint.secret)
       .update(signaturePayload)
       .digest('hex');
 
@@ -119,9 +124,9 @@ export async function startBackgroundServices() {
     }
 
     try {
-      console.log(`🚀 Dispatching webhook event [${event.eventType}] to: ${event.endpoint.url}`);
+      console.log(`🚀 Dispatching webhook event [${event.eventType}] to: ${endpoint.url}`);
 
-      const response = await fetch(event.endpoint.url, {
+      const response = await fetch(endpoint.url, {
         method: 'POST',
         headers,
         body: JSON.stringify(event.payload),
@@ -134,7 +139,7 @@ export async function startBackgroundServices() {
           where: { id: event.id },
           data: { status: 'DELIVERED' },
         });
-        console.log(`✅ Webhook delivered successfully to ${event.endpoint.url}. Status: ${response.status}`);
+        console.log(`✅ Webhook delivered successfully to ${endpoint.url}. Status: ${response.status}`);
       } else {
         await recordFailure(event.endpointId);
 
@@ -148,7 +153,7 @@ export async function startBackgroundServices() {
     } catch (networkError: any) {
       await recordFailure(event.endpointId);
 
-      console.error(`❌ Webhook delivery attempt failed for ${event.endpoint.url}:`, networkError.message);
+      console.error(`❌ Webhook delivery attempt failed for ${endpoint.url}:`, networkError.message);
       await prisma.event.update({
         where: { id: event.id },
         data: { status: 'FAILED' },

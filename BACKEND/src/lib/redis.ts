@@ -1,20 +1,23 @@
-import Redis from 'ioredis';
+import Redis from "ioredis";
 
-const redisHost = process.env.REDIS_HOST || 'localhost';
-const redisPort = process.env.REDIS_PORT ? parseInt(process.env.REDIS_PORT) : 6379;
-const redisPassword = process.env.REDIS_PASSWORD || undefined;
-
-export const redisConnection = new Redis({
-  host: redisHost,
-  port: redisPort,
-  password: redisPassword,
+export const queueRedis = new Redis(process.env.QUEUE_REDIS_URL!, {
   maxRetriesPerRequest: null,
 });
 
-redisConnection.on('connect', () => {
-  console.log('✅ Redis connected successfully.');
+export const appRedis = new Redis(process.env.APP_REDIS_URL!);
+
+queueRedis.on('connect', () => {
+  console.log('✅ Queue Redis connected successfully.');
 });
 
-redisConnection.on('error', (err) => {
-  console.error('❌ Redis connection error:', err);
+queueRedis.on('error', (err) => {
+  console.error('❌ Queue Redis connection error:', err);
+});
+
+appRedis.on('connect', () => {
+  console.log('✅ App Redis connected successfully.');
+});
+
+appRedis.on('error', (err) => {
+  console.error('❌ App Redis connection error:', err);
 });

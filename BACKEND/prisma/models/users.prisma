@@ -1,24 +1,24 @@
 model User {
-  id              String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  name            String
-  email           String   @unique
-  passwordHash    String?
+  name         String
+  email        String  @unique
+  passwordHash String?
 
-  emailVerified   Boolean  @default(false)
-  image           String?
+  emailVerified Boolean @default(false)
+  image         String?
 
-  status          UserStatus @default(ACTIVE)
+  status UserStatus @default(ACTIVE)
 
-  lastLoginAt     DateTime?
+  lastLoginAt DateTime?
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  memberships     Membership[]
-  apiKeys         ApiKey[]
+  memberships          Membership[]
+  apiKeys              ApiKey[]
   createdOrganizations Organization[]
-  refreshTokens   RefreshToken[]
+  refreshTokens        RefreshToken[]
 }
 
 enum UserStatus {

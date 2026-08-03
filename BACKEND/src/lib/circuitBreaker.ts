@@ -1,62 +1,83 @@
-import { redisConnection } from './redis';
+import { appRedis } from './redis';
 
 const FAILURE_THRESHOLD = 5;
+
 const OPEN_TIMEOUT = 60000;
-const SEVEN_DAYS_IN_SECONDS = 604800;
+
+const canRequestLua = `
+local state = redis.call("HGET", KEYS[1], "state")
+
+-- No circuit exists -> CLOSED
+if not state then
+    return 1
+end
+
+-- Someone is already testing
+if state == "HALF_OPEN" then
+    return 0
+end
+
+-- CLOSED
+if state == "CLOSED" then
+    return 1
+end
+
+-- state == OPEN
+local openedAt = tonumber(redis.call("HGET", KEYS[1], "openedAt") or "0")
+local now = tonumber(ARGV[1])
+local timeout = tonumber(ARGV[2])
+
+if (now - openedAt) > timeout then
+    redis.call("HSET", KEYS[1], "state", "HALF_OPEN")
+    return 1
+end
+
+return 0
+`;
 
 export async function canRequest(endpointId: string): Promise<boolean> {
+
   const key = `circuit:${endpointId}`;
 
-  const circuit = await redisConnection.hgetall(key);
+  const now = Date.now();
 
-  if (!circuit || !circuit.state) {
-    return true;
-  }
+  const result = await appRedis.eval(
+    canRequestLua,
+    1,
+    key,
+    now.toString(),
+    OPEN_TIMEOUT.toString()
+  );
 
-  if (circuit.state === 'OPEN') {
-    const now = Date.now();
-    const openedAt = Number(circuit.openedAt || circuit.lastFailure || 0);
-
-    if (now - openedAt > OPEN_TIMEOUT) {
-      await redisConnection.hset(key, {
-        state: 'HALF_OPEN',
-      });
-      console.log(`🟡 Circuit transitioned to HALF_OPEN for endpoint [${endpointId}]`);
-      return true;
-    }
-
-    return false;
-  }
-
-  return true;
+  return result === 1;
 }
 
 export async function recordFailure(endpointId: string): Promise<void> {
   const key = `circuit:${endpointId}`;
 
-  const circuitExists = await redisConnection.exists(key);
+  const circuitExists = await appRedis.exists(key);
 
   if (!circuitExists) {
-    await redisConnection.hset(key, {
+    await appRedis.hset(key, {
       state: 'CLOSED',
       failures: 1,
       lastFailure: Date.now().toString(),
     });
   } else {
-    const failures = await redisConnection.hincrby(key, 'failures', 1);
+    const failures = await appRedis.hincrby(key, 'failures', 1);
 
-    await redisConnection.hset(key, {
+    await appRedis.hset(key, {
       lastFailure: Date.now().toString(),
     });
 
     if (failures >= FAILURE_THRESHOLD) {
       const now = Date.now().toString();
-      await redisConnection.hset(key, {
+      await appRedis.hset(key, {
         state: 'OPEN',
         openedAt: now,
       });
 
-      await redisConnection.expire(key, SEVEN_DAYS_IN_SECONDS);
+      await appRedis.expire(key, 604800);
 
       console.log(`🔴 Circuit OPENED for endpoint [${endpointId}] (Failures: ${failures}, TTL: 7 days)`);
     }
@@ -66,5 +87,5 @@ export async function recordFailure(endpointId: string): Promise<void> {
 export async function recordSuccess(endpointId: string): Promise<void> {
   const key = `circuit:${endpointId}`;
 
-  await redisConnection.del(key);
+  await appRedis.del(key);
 }

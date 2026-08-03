@@ -1,0 +1,11 @@
+model IdempotencyKey {
+  id String @id @default(uuid())
+
+  key String @unique
+
+  eventId String @unique
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}

@@ -2,6 +2,7 @@ import { Response } from 'express';
 import crypto from 'crypto';
 import prisma from '../lib/prisma';
 import { AuthenticatedRequest } from '../middleware/auth.middleware';
+import { invalidateSubscriptionCache } from '../lib/endpointCache';
 
 export async function createEndpoint(req: AuthenticatedRequest, res: Response) {
   try {
@@ -57,6 +58,8 @@ export async function createEndpoint(req: AuthenticatedRequest, res: Response) {
         subscribedEvents: Array.isArray(subscribedEvents) ? subscribedEvents : [],
       }
     });
+
+    await invalidateSubscriptionCache(organizationId);
 
     res.status(201).json({
       message: "Endpoint created successfully.",

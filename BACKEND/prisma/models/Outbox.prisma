@@ -1,0 +1,25 @@
+model Outbox {
+  id String @id @default(uuid())
+
+  eventId String @unique
+
+  status OutboxStatus @default(PENDING)
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  retryCount Int @default(0)
+
+  createdAt DateTime @default(now())
+
+  publishedAt DateTime?
+}
+
+enum OutboxStatus {
+  PENDING
+
+  PROCESSING
+
+  SENT
+
+  FAILED
+}
