@@ -26,7 +26,7 @@ export async function startBackgroundServices() {
         try {
           const rawData = JSON.parse(message.value.toString());
           
-          const { eventId, organizationId, eventType, payload, idempotencyKey, clientTimestamp } = rawData;
+          const { eventId, organizationId, eventType, payload } = rawData;
 
           const endpointIds = await getSubscribedEndpoints(organizationId, eventType);
 
@@ -35,21 +35,37 @@ export async function startBackgroundServices() {
             return;
           }
 
-          for (const endpointId of endpointIds) {
-            const dbEvent = await prisma.event.create({
-              data: {
-                id: `${eventId}_${endpointId}`,
-                organizationId,
-                endpointId,
-                eventType,
-                payload,
-                idempotencyKey: idempotencyKey || undefined,
-                status: 'PENDING',
-                metadata: clientTimestamp ? { clientTimestamp } : undefined,
-              }
-            });
+          // 1. Bulk Batch Insert all delivery records in a SINGLE SQL query using skipDuplicates for idempotency
+          await prisma.eventDeliveryWebhook.createMany({
+            data: endpointIds.map((endpointId) => ({
+              eventId,
+              endpointId,
+              status: 'PENDING',
+            })),
+            skipDuplicates: true,
+          });
 
-            await addWebhookJob(dbEvent.id, { eventId: dbEvent.id });
+          // 2. Fetch the created/existing delivery records to obtain their generated IDs for BullMQ queue
+          const deliveryRecords = await prisma.eventDeliveryWebhook.findMany({
+            where: {
+              eventId,
+              endpointId: { in: endpointIds },
+            },
+            select: {
+              id: true,
+              endpointId: true,
+            },
+          });
+
+          // 3. Enqueue BullMQ jobs for each delivery record (clean payload without redundant fields)
+          for (const delivery of deliveryRecords) {
+            await addWebhookJob(delivery.id, {
+              deliveryId: delivery.id,
+              endpointId: delivery.endpointId,
+              organizationId,
+              payload,
+              eventType,
+            });
           }
 
         } catch (parseError) {
@@ -63,50 +79,36 @@ export async function startBackgroundServices() {
   }
 
   createWebhookWorker(async (job) => {
-    const { eventId } = job.data;
-    if (!eventId) return;
 
-    const event = await prisma.event.findUnique({
-      where: { id: eventId },
-    });
+    const { deliveryId, endpointId, payload, eventType } = job.data;
+    
+    if (!deliveryId || !endpointId) return;
 
-    if (!event) {
-      console.error(`❌ BullMQ: Event [${eventId}] not found in database.`);
-      return;
-    }
-
-    if (!event.endpointId) {
-      console.error(`❌ BullMQ: Event [${eventId}] missing endpointId association.`);
-      return;
-    }
-
-    const endpoint = await getEndpointMetadata(event.endpointId);
+    // 1. Fetch endpoint metadata from Redis Cache (Zero DB queries)
+    const endpoint = await getEndpointMetadata(endpointId);
 
     if (!endpoint) {
-      console.error(`❌ BullMQ: Endpoint metadata [${event.endpointId}] not found.`);
+      console.error(`❌ BullMQ: Endpoint metadata [${endpointId}] not found.`);
       return;
     }
 
     if (endpoint.isPaused || endpoint.status !== 'ACTIVE') {
-      console.log(`ℹ️ Webhook delivery skipped. Endpoint [${event.endpointId}] is paused or disabled.`);
+      console.log(`ℹ️ Webhook delivery skipped. Endpoint [${endpointId}] is paused or disabled.`);
       return;
     }
 
-    const allowed = await canRequest(event.endpointId);
+    // 2. Atomic Circuit Breaker Check via Redis Lua (Zero DB queries)
+    const allowed = await canRequest(endpointId);
 
     if (!allowed) {
-      console.log(`⚡ Circuit Breaker OPEN for endpoint [${event.endpointId}]. Delivery request blocked until cooldown finishes.`);
-      throw new Error(`Circuit Breaker is OPEN for endpoint [${event.endpointId}]. Request paused.`);
+      console.log(`⚡ Circuit Breaker OPEN for endpoint [${endpointId}]. Delivery request blocked until cooldown finishes.`);
+      throw new Error(`Circuit Breaker is OPEN for endpoint [${endpointId}]. Request paused.`);
     }
 
-    await prisma.event.update({
-      where: { id: event.id },
-      data: { status: 'PROCESSING' },
-    });
-
+    // 3. Generate HMAC Signature & Dispatch HTTP Request
     const timestamp = Date.now();
     
-    const signaturePayload = `${timestamp}.${JSON.stringify(event.payload)}`;
+    const signaturePayload = `${timestamp}.${JSON.stringify(payload)}`;
     
     const signature = crypto
       .createHmac('sha256', endpoint.secret)
@@ -119,44 +121,56 @@ export async function startBackgroundServices() {
       'User-Agent': 'Hydra-Webhook-Dispatcher/1.0',
     };
 
-    if (event.idempotencyKey) {
-      headers['Idempotency-Key'] = event.idempotencyKey;
-    }
-
     try {
-      console.log(`🚀 Dispatching webhook event [${event.eventType}] to: ${endpoint.url}`);
+      console.log(`🚀 Dispatching webhook event [${eventType}] to: ${endpoint.url}`);
 
       const response = await fetch(endpoint.url, {
         method: 'POST',
         headers,
-        body: JSON.stringify(event.payload),
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
-        await recordSuccess(event.endpointId);
+        await recordSuccess(endpointId);
 
-        await prisma.event.update({
-          where: { id: event.id },
-          data: { status: 'DELIVERED' },
+        // SINGLE TERMINAL DB WRITE ON SUCCESS
+        await prisma.eventDeliveryWebhook.update({
+          where: { id: deliveryId },
+          data: {
+            status: 'DELIVERED',
+            statusCode: response.status,
+            attemptCount: { increment: 1 },
+            deliveredAt: new Date(),
+          },
         });
         console.log(`✅ Webhook delivered successfully to ${endpoint.url}. Status: ${response.status}`);
       } else {
-        await recordFailure(event.endpointId);
+        await recordFailure(endpointId);
 
-        await prisma.event.update({
-          where: { id: event.id },
-          data: { status: 'FAILED' },
+        // SINGLE TERMINAL DB WRITE ON FAILURE
+        await prisma.eventDeliveryWebhook.update({
+          where: { id: deliveryId },
+          data: {
+            status: 'FAILED',
+            statusCode: response.status,
+            attemptCount: { increment: 1 },
+            errorMessage: `HTTP Status ${response.status}`,
+          },
         });
         throw new Error(`Endpoint returned status code: ${response.status}`);
       }
 
     } catch (networkError: any) {
-      await recordFailure(event.endpointId);
+      await recordFailure(endpointId);
 
-      console.error(`❌ Webhook delivery attempt failed for ${endpoint.url}:`, networkError.message);
-      await prisma.event.update({
-        where: { id: event.id },
-        data: { status: 'FAILED' },
+      // SINGLE TERMINAL DB WRITE ON NETWORK ERROR
+      await prisma.eventDeliveryWebhook.update({
+        where: { id: deliveryId },
+        data: {
+          status: 'FAILED',
+          attemptCount: { increment: 1 },
+          errorMessage: networkError.message,
+        },
       });
       throw networkError;
     }

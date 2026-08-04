@@ -1,0 +1,40 @@
+model EventDeliveryWebhook {
+  id String @id @default(cuid())
+
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  endpointId String
+  endpoint   Endpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+
+  status DeliveryStatus @default(PENDING)
+
+  statusCode Int?
+
+  errorMessage String?
+
+  attemptCount Int @default(0)
+
+  deliveredAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([eventId, endpointId])
+  @@index([status])
+  @@index([endpointId])
+  @@index([eventId])
+}
+
+enum DeliveryStatus {
+  PENDING
+
+  PROCESSING
+
+  DELIVERED
+
+  FAILED
+
+  DEAD
+}

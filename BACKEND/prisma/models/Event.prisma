@@ -3,10 +3,6 @@ model Event {
 
   organizationId String
 
-  endpointId String?
-
-  endpoint Endpoint? @relation(fields: [endpointId], references: [id])
-
   eventType String
 
   payload Json
@@ -25,8 +21,10 @@ model Event {
 
   outboxRecord Outbox?
 
+  webhookDeliveries EventDeliveryWebhook[]
+
   @@index([status])
-  @@index([endpointId])
+  @@index([organizationId])
 }
 
 enum EventStatus {

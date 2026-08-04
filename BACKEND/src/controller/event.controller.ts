@@ -32,6 +32,7 @@ export async function createEvent(req: ApiKeyRequest, res: Response) {
     const rateLimitKey = `ratelimit:${organizationId}:${rateLimitWindow}`;
     
     const requestsCount = await appRedis.incr(rateLimitKey);
+    
     if (requestsCount === 1) {
       await appRedis.expire(rateLimitKey, 10);
     }

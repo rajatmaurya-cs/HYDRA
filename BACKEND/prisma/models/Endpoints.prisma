@@ -22,7 +22,7 @@ model Endpoint {
 
   subscribedEvents String[]
 
-  events Event[]
+  webhookDeliveries EventDeliveryWebhook[]
 }
 
 enum EndpointStatus {

@@ -6,28 +6,52 @@ const POLL_INTERVAL_MS = 3000;
 
 let isRelayRunning = false;
 
+interface OutboxWithEvent {
+  id: string;
+  eventId: string;
+  status: string;
+  retryCount: number;
+  createdAt: Date;
+  event: {
+    id: string;
+    organizationId: string;
+    eventType: string;
+    payload: any;
+    idempotencyKey: string | null;
+    createdAt: Date;
+  };
+}
+
 export async function processOutboxEvents() {
-  
   if (isRelayRunning) return;
   isRelayRunning = true;
 
   try {
-    const pendingOutboxEntries = await prisma.outbox.findMany({
-      where: {
-        status: {
-          in: ['PENDING', 'FAILED'],
-        },
-        retryCount: {
-          lt: 5,
-        },
-      },
-      include: {
-        event: true,
-      },
-      take: BATCH_SIZE,
-      orderBy: {
-        createdAt: 'asc',
-      },
+    const pendingOutboxEntries = await prisma.$transaction(async (tx) => {
+      const lockedRows = await tx.$queryRaw<Array<{ id: string }>>`
+        SELECT id FROM "Outbox"
+        WHERE status IN ('PENDING', 'FAILED')
+          AND "retryCount" < 5
+        ORDER BY "createdAt" ASC
+        LIMIT ${BATCH_SIZE}
+        FOR UPDATE SKIP LOCKED;
+      `;
+
+      if (lockedRows.length === 0) return [];
+
+      const ids = lockedRows.map((r) => r.id);
+
+      await tx.outbox.updateMany({
+        where: { id: { in: ids } },
+        data: { status: 'PROCESSING' },
+      });
+
+      const entries = await tx.outbox.findMany({
+        where: { id: { in: ids } },
+        include: { event: true },
+      });
+
+      return entries as unknown as OutboxWithEvent[];
     });
 
     if (pendingOutboxEntries.length === 0) {
@@ -37,11 +61,6 @@ export async function processOutboxEvents() {
 
     for (const entry of pendingOutboxEntries) {
       try {
-        await prisma.outbox.update({
-          where: { id: entry.id },
-          data: { status: 'PROCESSING' },
-        });
-
         const ingestPayload = {
           eventId: entry.event.id,
           organizationId: entry.event.organizationId,
