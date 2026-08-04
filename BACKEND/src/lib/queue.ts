@@ -86,8 +86,11 @@ export async function retryDeadJob(deadJobId: string) {
     );
 
     await deadJob.remove();
+
     console.log(`🔄 Retried dead job [${deadJobId}]. Created new active job ID: ${newJob.id}`);
+
     return newJob;
+    
   } catch (error) {
     console.error(`❌ Failed to retry dead job [${deadJobId}]:`, error);
     throw error;

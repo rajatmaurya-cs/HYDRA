@@ -307,12 +307,20 @@ export default function OrganizationsPage() {
                   <span className="text-[10px] text-neutral-400 font-normal">
                     Created {new Date(org.createdAt).toLocaleDateString()}
                   </span>
-                  <button
-                    onClick={() => router.push(`/organizations/${org.id}`)}
-                    className="text-xs font-medium text-neutral-900 hover:underline flex items-center gap-1 cursor-pointer"
-                  >
-                    Manage →
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => router.push(`/organizations/${org.id}`)}
+                      className="px-3 py-1 bg-black hover:bg-neutral-800 text-white rounded text-xs font-normal cursor-pointer transition-all active:scale-95 flex items-center gap-1"
+                    >
+                      Manage →
+                    </button>
+                    <button
+                      onClick={() => router.push(`/dashboard?orgId=${org.id}`)}
+                      className="px-3 py-1 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 border border-neutral-200 rounded text-xs font-normal cursor-pointer transition-all active:scale-95"
+                    >
+                      Dashboard
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}

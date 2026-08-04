@@ -71,28 +71,11 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
       });
 
       if (orgResponse.ok) {
-        const orgData = await orgResponse.json();
-        setOrg(orgData.organization);
-
-        const endResponse = await fetch(`http://localhost:2000/api/endpoints?organizationId=${orgId}`, {
-          method: "GET",
-          credentials: "include",
-        });
-
-        if (endResponse.ok) {
-          const endData = await endResponse.json();
-          setEndpoints(endData.endpoints || []);
-        }
-
-        const keyResponse = await fetch(`http://localhost:2000/api/api-keys?organizationId=${orgId}`, {
-          method: "GET",
-          credentials: "include",
-        });
-
-        if (keyResponse.ok) {
-          const keyData = await keyResponse.json();
-          setApiKeys(keyData.apiKeys || []);
-        }
+        const data = await orgResponse.json();
+        const orgData = data.organization;
+        setOrg(orgData);
+        setEndpoints(orgData.endpoints || []);
+        setApiKeys(orgData.apiKeys || []);
       } else {
         router.push("/organizations");
       }
@@ -303,41 +286,47 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between gap-2 mt-1">
-                    <code className="text-xs text-neutral-900 font-mono font-normal select-all break-all bg-neutral-50 px-2.5 py-1.5 rounded border border-neutral-200 flex-1">
+                  <div className="flex flex-col gap-2 mt-1">
+                    <code className="text-xs text-neutral-900 font-mono font-normal select-all break-all bg-neutral-50 px-2.5 py-2 rounded border border-neutral-200 w-full block">
                       {key.prefix}
                     </code>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <button
-                        onClick={() => navigator.clipboard.writeText(key.prefix)}
-                        className="px-2.5 py-1.5 bg-black hover:bg-neutral-800 text-white rounded text-xs font-normal cursor-pointer active:scale-95 transition-all"
-                      >
-                        Copy
-                      </button>
-                      {!key.revoked && (
-                        <>
-                          <button
-                            onClick={() => handleRotateKey(key.id)}
-                            className="px-2.5 py-1.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 border border-neutral-200 rounded text-xs font-normal cursor-pointer active:scale-95 transition-all"
-                            title="Rotate Key (Revokes current key & issues new one)"
-                          >
-                            Rotate
-                          </button>
-                          <button
-                            onClick={() => handleRevokeKey(key.id)}
-                            className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded text-xs font-normal cursor-pointer active:scale-95 transition-all"
-                          >
-                            Revoke
-                          </button>
-                        </>
+                    <div className="flex items-center justify-between">
+                      {key.revoked ? (
+                        <span className="text-[10px] font-medium text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded w-fit uppercase">
+                          REVOKED
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded w-fit uppercase">
+                          ACTIVE
+                        </span>
                       )}
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => navigator.clipboard.writeText(key.prefix)}
+                          className="px-2.5 py-1.5 bg-black hover:bg-neutral-800 text-white rounded text-xs font-normal cursor-pointer active:scale-95 transition-all"
+                        >
+                          Copy
+                        </button>
+                        {!key.revoked && (
+                          <>
+                            <button
+                              onClick={() => handleRotateKey(key.id)}
+                              className="px-2.5 py-1.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 border border-neutral-200 rounded text-xs font-normal cursor-pointer active:scale-95 transition-all"
+                              title="Rotate Key (Revokes current key & issues new one)"
+                            >
+                              Rotate
+                            </button>
+                            <button
+                              onClick={() => handleRevokeKey(key.id)}
+                              className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded text-xs font-normal cursor-pointer active:scale-95 transition-all"
+                            >
+                              Revoke
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
-                  {key.revoked && (
-                    <span className="text-[10px] font-medium text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded w-fit uppercase">
-                      REVOKED
-                    </span>
-                  )}
                 </div>
               ))}
             </div>
