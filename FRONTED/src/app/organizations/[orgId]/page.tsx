@@ -18,6 +18,7 @@ interface Endpoint {
   secret: string;
   status: string;
   createdAt: string;
+  subscribedEvents?: string[];
 }
 
 interface ApiKey {
@@ -25,6 +26,7 @@ interface ApiKey {
   name: string;
   prefix: string;
   environment: string;
+  revoked?: boolean;
   createdAt: string;
 }
 
@@ -48,14 +50,12 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
   const [formError, setFormError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Redirect to login if unauthorized
   useEffect(() => {
     if (!authLoading && !user) {
       router.push("/login");
     }
   }, [user, authLoading, router]);
 
-  // Load details
   useEffect(() => {
     if (user && orgId) {
       fetchDetails();
@@ -100,6 +100,48 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
       console.error("Failed to load details:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRevokeKey = async (keyId: string) => {
+    if (!confirm("Are you sure you want to revoke this API Key? Any application using this key will lose access immediately.")) {
+      return;
+    }
+    try {
+      const response = await fetch(`http://localhost:2000/api/api-keys/${keyId}/revoke`, {
+        method: "PATCH",
+        credentials: "include",
+      });
+      if (response.ok) {
+        setApiKeys((prev) =>
+          prev.map((k) => (k.id === keyId ? { ...k, revoked: true } : k))
+        );
+      } else {
+        alert("Failed to revoke API key.");
+      }
+    } catch (error) {
+      console.error("Revoke API key error:", error);
+    }
+  };
+
+  const handleRotateKey = async (keyId: string) => {
+    if (!confirm("Are you sure you want to rotate this API Key? The current key will be revoked and a new key will be generated.")) {
+      return;
+    }
+    try {
+      const response = await fetch(`http://localhost:2000/api/api-keys/${keyId}/rotate`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await response.json();
+      if (response.ok) {
+        alert(`API Key rotated successfully!\n\nNew Raw Key:\n${data.rawKey}\n\nMake sure to copy it now as it won't be shown again!`);
+        fetchDetails();
+      } else {
+        alert(data.message || "Failed to rotate API key.");
+      }
+    } catch (error) {
+      console.error("Rotate API key error:", error);
     }
   };
 
@@ -195,13 +237,19 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
           Back to Organizations
         </button>
 
+        {/* Organization Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-neutral-200/80 pb-5 mb-8">
           <div>
-            <h1 className="text-2xl font-medium tracking-tight text-neutral-900">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">Organization</span>
+              <span className="text-neutral-300">•</span>
+              <span className="text-xs font-medium text-neutral-600 font-mono">/{org.slug}</span>
+            </div>
+            <h1 className="text-3xl font-medium tracking-tight text-neutral-900 mt-1">
               {org.name}
             </h1>
             <p className="text-neutral-500 text-xs mt-1 font-normal">
-              Configure endpoints and credentials for <code className="bg-neutral-100 px-1.5 py-0.5 rounded text-neutral-800 font-mono">/{org.slug}</code>
+              Manage webhook endpoints and API credentials for this organization.
             </p>
           </div>
           {!showForm && (
@@ -214,6 +262,85 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
               </svg>
               Add Endpoint
             </button>
+          )}
+        </div>
+
+        {/* API Credentials Section (Directly below Organization) */}
+        <div className="mb-10 p-6 bg-neutral-50/70 border border-neutral-200 rounded-xl">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-base font-medium text-neutral-900">API Credentials</h2>
+              <p className="text-neutral-500 text-xs mt-0.5 font-normal">Use these API keys to send events to this organization.</p>
+            </div>
+            <button
+              onClick={() => router.push("/dashboard")}
+              className="px-3 py-1.5 bg-white hover:bg-neutral-100 border border-neutral-200 rounded-md text-xs font-normal text-neutral-800 transition-all cursor-pointer shadow-xs"
+            >
+              Manage in Console →
+            </button>
+          </div>
+
+          {apiKeys.length === 0 ? (
+            <div className="text-center py-6 bg-white border border-neutral-200/80 rounded-lg text-neutral-500 text-xs font-normal">
+              No active API keys found for this organization.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              {apiKeys.map((key) => (
+                <div
+                  key={key.id}
+                  className="p-4 bg-white border border-neutral-200 rounded-lg flex flex-col gap-2 shadow-2xs"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-xs text-neutral-900">{key.name}</span>
+                      <span className="text-[9px] font-normal px-1.5 py-0.5 rounded bg-neutral-100 border border-neutral-200 text-neutral-700">
+                        {key.environment}
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-neutral-400 font-normal">
+                      {new Date(key.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2 mt-1">
+                    <code className="text-xs text-neutral-900 font-mono font-normal select-all break-all bg-neutral-50 px-2.5 py-1.5 rounded border border-neutral-200 flex-1">
+                      {key.prefix}
+                    </code>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        onClick={() => navigator.clipboard.writeText(key.prefix)}
+                        className="px-2.5 py-1.5 bg-black hover:bg-neutral-800 text-white rounded text-xs font-normal cursor-pointer active:scale-95 transition-all"
+                      >
+                        Copy
+                      </button>
+                      {!key.revoked && (
+                        <>
+                          <button
+                            onClick={() => handleRotateKey(key.id)}
+                            className="px-2.5 py-1.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 border border-neutral-200 rounded text-xs font-normal cursor-pointer active:scale-95 transition-all"
+                            title="Rotate Key (Revokes current key & issues new one)"
+                          >
+                            Rotate
+                          </button>
+                          <button
+                            onClick={() => handleRevokeKey(key.id)}
+                            className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded text-xs font-normal cursor-pointer active:scale-95 transition-all"
+                          >
+                            Revoke
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  {key.revoked && (
+                    <span className="text-[10px] font-medium text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded w-fit uppercase">
+                      REVOKED
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
           )}
         </div>
 
@@ -361,6 +488,14 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
           </div>
         )}
 
+        {/* Endpoints List Header */}
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-medium text-neutral-900">Webhook Endpoints</h2>
+          <span className="text-xs text-neutral-500 font-normal">
+            {endpoints.length} {endpoints.length === 1 ? "endpoint" : "endpoints"} configured
+          </span>
+        </div>
+
         {/* Endpoints List */}
         {endpoints.length === 0 ? (
           <div className="text-center py-14 bg-neutral-50/50 border border-neutral-200/80 rounded-xl p-6">
@@ -380,17 +515,26 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
             {endpoints.map((ep) => (
               <div
                 key={ep.id}
-                className="bg-white border border-neutral-200 hover:border-neutral-400 p-5 rounded-xl transition-all flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+                onClick={() => router.push(`/endpoints/${ep.id}`)}
+                className="bg-white border border-neutral-200 hover:border-black/50 p-5 rounded-xl transition-all flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 cursor-pointer hover:shadow-xs group"
               >
                 <div>
-                  <div className="flex items-center gap-2.5 mb-1">
-                    <h3 className="font-medium text-sm text-neutral-900">{ep.name}</h3>
-                    <span className="text-[9px] font-normal text-neutral-600 bg-neutral-100 border border-neutral-200 px-2 py-0.5 rounded uppercase">
+                  <div className="flex items-center gap-2.5 mb-1.5">
+                    <h3 className="font-semibold text-base text-neutral-900 group-hover:text-black transition-colors flex items-center gap-1.5">
+                      {ep.name}
+                      <svg className="w-4 h-4 text-neutral-400 group-hover:text-black group-hover:translate-x-0.5 transition-all" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </h3>
+                    <span className="text-[9px] font-medium text-neutral-700 bg-neutral-100 border border-neutral-200 px-2 py-0.5 rounded uppercase">
                       {ep.status}
                     </span>
                   </div>
-                  <code className="text-xs text-neutral-600 font-mono break-all font-normal">{ep.url}</code>
-                  <div className="mt-2.5 flex flex-wrap items-center gap-x-5 gap-y-1 text-[11px] text-neutral-400 font-normal">
+                  <div className="flex items-center gap-2 text-xs text-neutral-600 mb-2">
+                    <span className="font-medium text-neutral-400 text-[11px] uppercase tracking-wider">URL:</span>
+                    <code className="font-mono break-all bg-neutral-50 px-2 py-0.5 rounded border border-neutral-200/80">{ep.url}</code>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-[11px] text-neutral-400 font-normal">
                     <span>Secret: <code className="text-neutral-700 bg-neutral-100 px-1.5 py-0.5 rounded font-mono">{ep.secret}</code></span>
                     <span>Created {new Date(ep.createdAt).toLocaleDateString()}</span>
                   </div>
@@ -399,61 +543,6 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
             ))}
           </div>
         )}
-
-        {/* API Credentials Section */}
-        <div className="mt-12 pt-7 border-t border-neutral-200/80">
-          <div className="flex items-center justify-between mb-5">
-            <div>
-              <h2 className="text-lg font-medium text-neutral-900">API Credentials</h2>
-              <p className="text-neutral-500 text-xs mt-0.5 font-normal">API keys configured for this organization.</p>
-            </div>
-            <button
-              onClick={() => router.push("/dashboard")}
-              className="px-3 py-1.5 bg-neutral-100 hover:bg-neutral-200/80 border border-neutral-200 rounded-md text-xs font-normal text-neutral-800 transition-all cursor-pointer"
-            >
-              Manage in Console →
-            </button>
-          </div>
-
-          {apiKeys.length === 0 ? (
-            <div className="text-center py-7 bg-neutral-50/50 border border-neutral-200/80 rounded-lg text-neutral-500 text-xs font-normal">
-              No active API keys found.
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-              {apiKeys.map((key) => (
-                <div
-                  key={key.id}
-                  className="p-4 bg-white border border-neutral-200 rounded-lg flex flex-col gap-2"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-xs text-neutral-900">{key.name}</span>
-                      <span className="text-[9px] font-normal px-1.5 py-0.5 rounded bg-neutral-100 border border-neutral-200 text-neutral-700">
-                        {key.environment}
-                      </span>
-                    </div>
-                    <span className="text-[10px] text-neutral-400 font-normal">
-                      {new Date(key.createdAt).toLocaleDateString()}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between gap-2 mt-1">
-                    <code className="text-xs text-neutral-900 font-mono font-normal select-all break-all bg-neutral-50 px-2 py-1.5 rounded border border-neutral-200 flex-1">
-                      {key.prefix}
-                    </code>
-                    <button
-                      onClick={() => navigator.clipboard.writeText(key.prefix)}
-                      className="px-2.5 py-1.5 bg-black hover:bg-neutral-800 text-white rounded text-xs font-normal shrink-0 cursor-pointer"
-                    >
-                      Copy Key
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
 
       </div>
     </div>

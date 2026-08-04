@@ -50,14 +50,6 @@ export async function createOrganization(req: AuthenticatedRequest, res: Respons
         }
       });
 
-      await tx.membership.create({
-        data: {
-          organizationId: org.id,
-          userId: req.user!.id,
-          role: 'OWNER',
-        }
-      });
-
       const secretBytes = crypto.randomBytes(32).toString('hex');
       const rawApiKey = `hdr_test_${secretBytes}`;
       const prefix = rawApiKey;
@@ -96,14 +88,9 @@ export async function getUserOrganizations(req: AuthenticatedRequest, res: Respo
       return;
     }
 
-    const memberships = await prisma.membership.findMany({
-      where: { userId: req.user.id },
-      include: {
-        organization: true
-      }
+    const organizations = await prisma.organization.findMany({
+      where: { createdById: req.user.id }
     });
-
-    const organizations = memberships.map(m => m.organization);
 
     res.status(200).json({
       organizations
@@ -131,11 +118,7 @@ export async function getOrganizationById(req: AuthenticatedRequest, res: Respon
     const org = await prisma.organization.findFirst({
       where: {
         id: orgId,
-        members: {
-          some: {
-            userId: req.user.id
-          }
-        }
+        createdById: req.user.id,
       }
     });
 

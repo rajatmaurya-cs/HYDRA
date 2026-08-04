@@ -24,17 +24,15 @@ export async function createEndpoint(req: AuthenticatedRequest, res: Response) {
       return;
     }
 
-    const membership = await prisma.membership.findUnique({
+    const org = await prisma.organization.findFirst({
       where: {
-        organizationId_userId: {
-          organizationId,
-          userId: req.user.id,
-        }
+        id: organizationId,
+        createdById: req.user.id,
       }
     });
 
-    if (!membership) {
-      res.status(403).json({ message: "Forbidden. You are not a member of this organization." });
+    if (!org) {
+      res.status(403).json({ message: "Forbidden. Organization not found or access denied." });
       return;
     }
 
@@ -78,17 +76,15 @@ export async function getEndpoints(req: AuthenticatedRequest, res: Response) {
       return;
     }
 
-    const membership = await prisma.membership.findUnique({
+    const org = await prisma.organization.findFirst({
       where: {
-        organizationId_userId: {
-          organizationId,
-          userId: req.user.id,
-        }
+        id: organizationId,
+        createdById: req.user.id,
       }
     });
 
-    if (!membership) {
-      res.status(403).json({ message: "Forbidden. You are not a member of this organization." });
+    if (!org) {
+      res.status(403).json({ message: "Forbidden. Organization not found or access denied." });
       return;
     }
 
@@ -99,6 +95,45 @@ export async function getEndpoints(req: AuthenticatedRequest, res: Response) {
     res.status(200).json({ endpoints });
   } catch (error: any) {
     console.error("Get endpoints error:", error);
+    res.status(500).json({ message: "Internal server error." });
+  }
+}
+
+export async function getEndpointById(req: AuthenticatedRequest, res: Response) {
+  try {
+    const endpointIdParam = req.params.endpointId;
+    const endpointId = Array.isArray(endpointIdParam) ? endpointIdParam[0] : endpointIdParam;
+
+    if (!req.user) {
+      res.status(401).json({ message: "Unauthorized." });
+      return;
+    }
+
+    if (!endpointId) {
+      res.status(400).json({ message: "Endpoint ID is required." });
+      return;
+    }
+
+    const endpoint = await prisma.endpoint.findFirst({
+      where: {
+        id: endpointId,
+        organization: {
+          createdById: req.user.id,
+        }
+      },
+      include: {
+        organization: true,
+      }
+    });
+
+    if (!endpoint) {
+      res.status(404).json({ message: "Endpoint not found or access denied." });
+      return;
+    }
+
+    res.status(200).json({ endpoint });
+  } catch (error: any) {
+    console.error("Get endpoint by ID error:", error);
     res.status(500).json({ message: "Internal server error." });
   }
 }

@@ -25,8 +25,6 @@ model Organization {
   endpoints Endpoint[]
 
   apiKeys ApiKey[]
-
-  members Membership[]
 }
 
 enum Plan {

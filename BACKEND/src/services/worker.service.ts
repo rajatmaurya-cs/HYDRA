@@ -1,9 +1,15 @@
 import crypto from 'crypto';
+import { Prisma } from '@prisma/client';
 import prisma from '../lib/prisma';
 import { createConsumer, ensureTopicExists } from '../lib/kafka';
 import { addWebhookJob, createWebhookWorker } from '../lib/queue';
 import { canRequest, recordFailure, recordSuccess } from '../lib/circuitBreaker';
 import { getSubscribedEndpoints, getEndpointMetadata } from '../lib/endpointCache';
+
+interface DeliveryRecord {
+  id: string;
+  endpointId: string;
+}
 
 export async function startBackgroundServices() {
   console.log('📡 Initializing background event processing services...');
@@ -32,25 +38,33 @@ export async function startBackgroundServices() {
           const endpointIds = await getSubscribedEndpoints(organizationId, eventType);
 
           if (endpointIds.length > 0) {
-            await prisma.eventDeliveryWebhook.createMany({
-              data: endpointIds.map((endpointId) => ({
-                eventId,
-                endpointId,
-                status: 'PENDING',
-              })),
-              skipDuplicates: true,
-            });
-
-            const deliveryRecords = await prisma.eventDeliveryWebhook.findMany({
-              where: {
-                eventId,
-                endpointId: { in: endpointIds },
-              },
-              select: {
-                id: true,
-                endpointId: true,
-              },
-            });
+            // Atomic UPSERT + RETURNING in a single SQL query replacing separate createMany & findMany
+            const deliveryRecords = await prisma.$queryRaw<DeliveryRecord[]>`
+              INSERT INTO "EventDeliveryWebhook" (
+                "id",
+                "eventId",
+                "endpointId",
+                "status",
+                "createdAt",
+                "updatedAt"
+              )
+              VALUES ${Prisma.join(
+                endpointIds.map(
+                  (endpointId) => Prisma.sql`
+                  (
+                    ${'del_' + crypto.randomUUID().replace(/-/g, '')},
+                    ${eventId},
+                    ${endpointId},
+                    'PENDING'::"DeliveryStatus",
+                    NOW(),
+                    NOW()
+                  )
+                `
+                )
+              )}
+              ON CONFLICT ("eventId", "endpointId") DO NOTHING
+              RETURNING id, "endpointId";
+            `;
 
             for (const delivery of deliveryRecords) {
               await addWebhookJob(delivery.id, {
@@ -63,7 +77,6 @@ export async function startBackgroundServices() {
             }
           }
 
-          // Explicitly commit offset to Kafka ONLY AFTER bulk DB insert and BullMQ job creation succeed
           await consumer.commitOffsets([
             { topic, partition, offset: (BigInt(message.offset) + 1n).toString() },
           ]);
@@ -139,6 +152,7 @@ export async function startBackgroundServices() {
         });
         console.log(`✅ Webhook delivered successfully to ${endpoint.url}. Status: ${response.status}`);
       } else {
+        
         await recordFailure(endpointId);
 
         await prisma.eventDeliveryWebhook.update({
