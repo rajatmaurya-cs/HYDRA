@@ -9,6 +9,8 @@ model Outbox {
 
   retryCount Int @default(0)
 
+  nextAttemptAt DateTime?
+
   createdAt DateTime @default(now())
 
   publishedAt DateTime?

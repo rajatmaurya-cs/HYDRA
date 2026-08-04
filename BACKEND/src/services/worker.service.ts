@@ -20,7 +20,8 @@ export async function startBackgroundServices() {
     console.log('✅ Kafka Consumer connected and subscribed to [webhook-events].');
 
     await consumer.run({
-      eachMessage: async ({ message }) => {
+      autoCommit: false,
+      eachMessage: async ({ topic, partition, message }) => {
         if (!message.value) return;
 
         try {
@@ -30,43 +31,42 @@ export async function startBackgroundServices() {
 
           const endpointIds = await getSubscribedEndpoints(organizationId, eventType);
 
-          if (endpointIds.length === 0) {
-            console.log(`ℹ️ Event [${eventType}] has no active subscriptions for org [${organizationId}].`);
-            return;
-          }
-
-          // 1. Bulk Batch Insert all delivery records in a SINGLE SQL query using skipDuplicates for idempotency
-          await prisma.eventDeliveryWebhook.createMany({
-            data: endpointIds.map((endpointId) => ({
-              eventId,
-              endpointId,
-              status: 'PENDING',
-            })),
-            skipDuplicates: true,
-          });
-
-          // 2. Fetch the created/existing delivery records to obtain their generated IDs for BullMQ queue
-          const deliveryRecords = await prisma.eventDeliveryWebhook.findMany({
-            where: {
-              eventId,
-              endpointId: { in: endpointIds },
-            },
-            select: {
-              id: true,
-              endpointId: true,
-            },
-          });
-
-          // 3. Enqueue BullMQ jobs for each delivery record (clean payload without redundant fields)
-          for (const delivery of deliveryRecords) {
-            await addWebhookJob(delivery.id, {
-              deliveryId: delivery.id,
-              endpointId: delivery.endpointId,
-              organizationId,
-              payload,
-              eventType,
+          if (endpointIds.length > 0) {
+            await prisma.eventDeliveryWebhook.createMany({
+              data: endpointIds.map((endpointId) => ({
+                eventId,
+                endpointId,
+                status: 'PENDING',
+              })),
+              skipDuplicates: true,
             });
+
+            const deliveryRecords = await prisma.eventDeliveryWebhook.findMany({
+              where: {
+                eventId,
+                endpointId: { in: endpointIds },
+              },
+              select: {
+                id: true,
+                endpointId: true,
+              },
+            });
+
+            for (const delivery of deliveryRecords) {
+              await addWebhookJob(delivery.id, {
+                deliveryId: delivery.id,
+                endpointId: delivery.endpointId,
+                organizationId,
+                payload,
+                eventType,
+              });
+            }
           }
+
+          // Explicitly commit offset to Kafka ONLY AFTER bulk DB insert and BullMQ job creation succeed
+          await consumer.commitOffsets([
+            { topic, partition, offset: (BigInt(message.offset) + 1n).toString() },
+          ]);
 
         } catch (parseError) {
           console.error('❌ Failed to process Kafka message:', parseError);
@@ -79,12 +79,9 @@ export async function startBackgroundServices() {
   }
 
   createWebhookWorker(async (job) => {
-
     const { deliveryId, endpointId, payload, eventType } = job.data;
-    
     if (!deliveryId || !endpointId) return;
 
-    // 1. Fetch endpoint metadata from Redis Cache (Zero DB queries)
     const endpoint = await getEndpointMetadata(endpointId);
 
     if (!endpoint) {
@@ -97,7 +94,6 @@ export async function startBackgroundServices() {
       return;
     }
 
-    // 2. Atomic Circuit Breaker Check via Redis Lua (Zero DB queries)
     const allowed = await canRequest(endpointId);
 
     if (!allowed) {
@@ -105,7 +101,6 @@ export async function startBackgroundServices() {
       throw new Error(`Circuit Breaker is OPEN for endpoint [${endpointId}]. Request paused.`);
     }
 
-    // 3. Generate HMAC Signature & Dispatch HTTP Request
     const timestamp = Date.now();
     
     const signaturePayload = `${timestamp}.${JSON.stringify(payload)}`;
@@ -133,7 +128,6 @@ export async function startBackgroundServices() {
       if (response.ok) {
         await recordSuccess(endpointId);
 
-        // SINGLE TERMINAL DB WRITE ON SUCCESS
         await prisma.eventDeliveryWebhook.update({
           where: { id: deliveryId },
           data: {
@@ -147,7 +141,6 @@ export async function startBackgroundServices() {
       } else {
         await recordFailure(endpointId);
 
-        // SINGLE TERMINAL DB WRITE ON FAILURE
         await prisma.eventDeliveryWebhook.update({
           where: { id: deliveryId },
           data: {
@@ -163,7 +156,7 @@ export async function startBackgroundServices() {
     } catch (networkError: any) {
       await recordFailure(endpointId);
 
-      // SINGLE TERMINAL DB WRITE ON NETWORK ERROR
+      console.error(`❌ Webhook delivery attempt failed for ${endpoint.url}:`, networkError.message);
       await prisma.eventDeliveryWebhook.update({
         where: { id: deliveryId },
         data: {

@@ -3,6 +3,7 @@ import { produceMessage } from '../lib/kafka';
 
 const BATCH_SIZE = 50;
 const POLL_INTERVAL_MS = 3000;
+const MAX_OUTBOX_RETRIES = 5;
 
 let isRelayRunning = false;
 
@@ -11,6 +12,7 @@ interface OutboxWithEvent {
   eventId: string;
   status: string;
   retryCount: number;
+  nextAttemptAt: Date | null;
   createdAt: Date;
   event: {
     id: string;
@@ -22,6 +24,12 @@ interface OutboxWithEvent {
   };
 }
 
+function calculateExponentialBackoff(retryCount: number): Date {
+  const baseDelaySeconds = 5;
+  const backoffSeconds = baseDelaySeconds * Math.pow(2, retryCount); // 5s, 10s, 20s, 40s, 80s...
+  return new Date(Date.now() + backoffSeconds * 1000);
+}
+
 export async function processOutboxEvents() {
   if (isRelayRunning) return;
   isRelayRunning = true;
@@ -31,7 +39,8 @@ export async function processOutboxEvents() {
       const lockedRows = await tx.$queryRaw<Array<{ id: string }>>`
         SELECT id FROM "Outbox"
         WHERE status IN ('PENDING', 'FAILED')
-          AND "retryCount" < 5
+          AND "retryCount" < ${MAX_OUTBOX_RETRIES}
+          AND ("nextAttemptAt" IS NULL OR "nextAttemptAt" <= NOW())
         ORDER BY "createdAt" ASC
         LIMIT ${BATCH_SIZE}
         FOR UPDATE SKIP LOCKED;
@@ -83,13 +92,23 @@ export async function processOutboxEvents() {
         console.log(`📤 Outbox Relay: Published event [${entry.eventId}] to Kafka successfully.`);
 
       } catch (error: any) {
-        console.error(`❌ Outbox Relay: Failed to publish event [${entry.eventId}]:`, error.message);
+        const nextRetryCount = entry.retryCount + 1;
+        const isMaxRetriesExhausted = nextRetryCount >= MAX_OUTBOX_RETRIES;
+        const nextAttemptAt = isMaxRetriesExhausted ? null : calculateExponentialBackoff(nextRetryCount);
+
+        console.error(
+          `❌ Outbox Relay: Failed to publish event [${entry.eventId}] (Attempt ${nextRetryCount}/${MAX_OUTBOX_RETRIES}). Next retry: ${
+            nextAttemptAt ? nextAttemptAt.toISOString() : 'TERMINAL FAILED'
+          }:`,
+          error.message
+        );
 
         await prisma.outbox.update({
           where: { id: entry.id },
           data: {
             status: 'FAILED',
-            retryCount: { increment: 1 },
+            retryCount: nextRetryCount,
+            nextAttemptAt,
           },
         });
       }
