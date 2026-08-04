@@ -24,4 +24,6 @@ enum OutboxStatus {
   SENT
 
   FAILED
+
+  DEAD
 }

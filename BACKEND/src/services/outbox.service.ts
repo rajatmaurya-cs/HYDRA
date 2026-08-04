@@ -26,7 +26,7 @@ interface OutboxWithEvent {
 
 function calculateExponentialBackoff(retryCount: number): Date {
   const baseDelaySeconds = 5;
-  const backoffSeconds = baseDelaySeconds * Math.pow(2, retryCount); // 5s, 10s, 20s, 40s, 80s...
+  const backoffSeconds = baseDelaySeconds * Math.pow(2, retryCount);
   return new Date(Date.now() + backoffSeconds * 1000);
 }
 
@@ -94,23 +94,37 @@ export async function processOutboxEvents() {
       } catch (error: any) {
         const nextRetryCount = entry.retryCount + 1;
         const isMaxRetriesExhausted = nextRetryCount >= MAX_OUTBOX_RETRIES;
-        const nextAttemptAt = isMaxRetriesExhausted ? null : calculateExponentialBackoff(nextRetryCount);
 
-        console.error(
-          `❌ Outbox Relay: Failed to publish event [${entry.eventId}] (Attempt ${nextRetryCount}/${MAX_OUTBOX_RETRIES}). Next retry: ${
-            nextAttemptAt ? nextAttemptAt.toISOString() : 'TERMINAL FAILED'
-          }:`,
-          error.message
-        );
+        if (isMaxRetriesExhausted) {
+          console.error(
+            `🚨 CRITICAL OUTBOX ALERT: Outbox record [${entry.id}] for event [${entry.eventId}] exhausted all ${MAX_OUTBOX_RETRIES} attempts. Moving to DEAD status.`
+          );
 
-        await prisma.outbox.update({
-          where: { id: entry.id },
-          data: {
-            status: 'FAILED',
-            retryCount: nextRetryCount,
-            nextAttemptAt,
-          },
-        });
+          await prisma.outbox.update({
+            where: { id: entry.id },
+            data: {
+              status: 'DEAD',
+              retryCount: nextRetryCount,
+              nextAttemptAt: null,
+            },
+          });
+        } else {
+          const nextAttemptAt = calculateExponentialBackoff(nextRetryCount);
+
+          console.error(
+            `❌ Outbox Relay: Failed to publish event [${entry.eventId}] (Attempt ${nextRetryCount}/${MAX_OUTBOX_RETRIES}). Retrying at ${nextAttemptAt.toISOString()}:`,
+            error.message
+          );
+
+          await prisma.outbox.update({
+            where: { id: entry.id },
+            data: {
+              status: 'FAILED',
+              retryCount: nextRetryCount,
+              nextAttemptAt,
+            },
+          });
+        }
       }
     }
   } catch (error) {
@@ -118,6 +132,20 @@ export async function processOutboxEvents() {
   } finally {
     isRelayRunning = false;
   }
+}
+
+export async function replayDeadOutboxEvents(eventId?: string) {
+  const filter = eventId ? { eventId, status: 'DEAD' as const } : { status: 'DEAD' as const };
+  const updated = await prisma.outbox.updateMany({
+    where: filter,
+    data: {
+      status: 'PENDING',
+      retryCount: 0,
+      nextAttemptAt: null,
+    },
+  });
+  console.log(`🔄 Replayed ${updated.count} dead outbox entries back to PENDING.`);
+  return updated.count;
 }
 
 export function startOutboxRelay() {
