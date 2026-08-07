@@ -12,32 +12,42 @@ interface DeliveryRecord {
   eventId: string;
 }
 
-export async function updateParentEventStatus(eventId: string): Promise<void> {
+// 1. Atomic SQL Increment for Successful Webhook Delivery
+export async function incrementDeliveredCount(eventId: string): Promise<void> {
   try {
-    const deliveries = await prisma.eventDeliveryWebhook.findMany({
-      where: { eventId },
-      select: { status: true },
-    });
-
-    if (deliveries.length === 0) return;
-
-    const allDelivered = deliveries.every((d) => d.status === 'DELIVERED');
-    const hasFailed = deliveries.some((d) => d.status === 'FAILED' || d.status === 'DEAD');
-
-    let newStatus: 'DELIVERED' | 'FAILED' | 'PROCESSING' = 'PROCESSING';
-
-    if (allDelivered) {
-      newStatus = 'DELIVERED';
-    } else if (hasFailed) {
-      newStatus = 'FAILED';
-    }
-
-    await prisma.event.update({
-      where: { id: eventId },
-      data: { status: newStatus },
-    });
+    await prisma.$executeRaw`
+      UPDATE "Event"
+      SET 
+        "deliveredCount" = "deliveredCount" + 1,
+        "status" = CASE 
+          WHEN ("deliveredCount" + 1) = "totalDeliveries" THEN 'DELIVERED'::"EventStatus"
+          WHEN ("deliveredCount" + 1 + "failedCount") = "totalDeliveries" THEN 'FAILED'::"EventStatus"
+          ELSE 'PROCESSING'::"EventStatus"
+        END
+      WHERE id = ${eventId};
+    `;
   } catch (error) {
-    console.error(`Failed to update parent Event [${eventId}] status:`, error);
+    console.error(`Failed to increment deliveredCount for Event [${eventId}]:`, error);
+  }
+}
+
+// 2. Atomic SQL Increment for Failed Webhook Delivery
+export async function incrementFailedCount(eventId: string): Promise<void> {
+  try {
+    await prisma.$executeRaw`
+      UPDATE "Event"
+      SET 
+        "failedCount" = "failedCount" + 1,
+        "status" = CASE 
+          WHEN ("deliveredCount" + "failedCount" + 1) = "totalDeliveries" 
+               AND ("deliveredCount") = 0 THEN 'FAILED'::"EventStatus"
+          WHEN ("deliveredCount" + "failedCount" + 1) = "totalDeliveries" THEN 'FAILED'::"EventStatus"
+          ELSE 'PROCESSING'::"EventStatus"
+        END
+      WHERE id = ${eventId};
+    `;
+  } catch (error) {
+    console.error(`Failed to increment failedCount for Event [${eventId}]:`, error);
   }
 }
 
@@ -70,13 +80,16 @@ export async function startBackgroundServices() {
           if (endpointIds.length > 0) {
             console.log(`🎯 Matched ${endpointIds.length} subscribed endpoint(s). Creating delivery webhooks...`);
 
-            // 1. Mark Event status as PROCESSING upon matching endpoints in Kafka consumer
+            // Set totalDeliveries count & status = PROCESSING on parent Event
             await prisma.event.update({
               where: { id: eventId },
-              data: { status: 'PROCESSING' },
+              data: { 
+                status: 'PROCESSING',
+                totalDeliveries: endpointIds.length,
+              },
             });
 
-            // 2. Atomic UPSERT + RETURNING delivery records
+            // Atomic UPSERT + RETURNING delivery records
             const deliveryRecords = await prisma.$queryRaw<DeliveryRecord[]>`
               INSERT INTO "EventDeliveryWebhook" (
                 "id",
@@ -158,7 +171,6 @@ export async function startBackgroundServices() {
     }
 
     const timestamp = Date.now();
-    
     const signaturePayload = `${timestamp}.${JSON.stringify(payload)}`;
     
     const signature = crypto
@@ -197,25 +209,34 @@ export async function startBackgroundServices() {
 
         console.log(`✅ Webhook delivered successfully to ${endpoint.url}. Status: ${response.status}`);
         
-        // Update parent Event status when all delivery webhooks succeed
-        await updateParentEventStatus(updatedDelivery.eventId);
+        // Atomic SQL counter increment for success
+        await incrementDeliveredCount(updatedDelivery.eventId);
 
       } else {
         
         await recordFailure(endpointId);
 
+        const attemptsMade = job.attemptsMade + 1;
+        const maxAttempts = job.opts.attempts || 5;
+        const isFinalAttempt = attemptsMade >= maxAttempts;
+        const newDeliveryStatus = isFinalAttempt ? 'DEAD' : 'FAILED';
+
         const updatedDelivery = await prisma.eventDeliveryWebhook.update({
           where: { id: deliveryId },
           data: {
-            status: 'FAILED',
+            status: newDeliveryStatus,
             statusCode: response.status,
-            attemptCount: { increment: 1 },
+            attemptCount: attemptsMade,
             errorMessage: `HTTP Status ${response.status}`,
           },
           select: { eventId: true },
         });
 
-        await updateParentEventStatus(updatedDelivery.eventId);
+        if (isFinalAttempt) {
+          console.warn(`☠️ Delivery [${deliveryId}] exhausted all ${maxAttempts} attempts. Marked as DEAD in PostgreSQL.`);
+          await incrementFailedCount(updatedDelivery.eventId);
+        }
+
         throw new Error(`Endpoint returned status code: ${response.status}`);
       }
 
@@ -223,17 +244,27 @@ export async function startBackgroundServices() {
       await recordFailure(endpointId);
 
       console.error(`❌ Webhook delivery attempt failed for ${endpoint.url}:`, networkError.message);
+      
+      const attemptsMade = job.attemptsMade + 1;
+      const maxAttempts = job.opts.attempts || 5;
+      const isFinalAttempt = attemptsMade >= maxAttempts;
+      const newDeliveryStatus = isFinalAttempt ? 'DEAD' : 'FAILED';
+
       const updatedDelivery = await prisma.eventDeliveryWebhook.update({
         where: { id: deliveryId },
         data: {
-          status: 'FAILED',
-          attemptCount: { increment: 1 },
+          status: newDeliveryStatus,
+          attemptCount: attemptsMade,
           errorMessage: networkError.message,
         },
         select: { eventId: true },
       });
 
-      await updateParentEventStatus(updatedDelivery.eventId);
+      if (isFinalAttempt) {
+        console.warn(`☠️ Delivery [${deliveryId}] exhausted all ${maxAttempts} attempts. Marked as DEAD in PostgreSQL.`);
+        await incrementFailedCount(updatedDelivery.eventId);
+      }
+
       throw networkError;
     }
   });
