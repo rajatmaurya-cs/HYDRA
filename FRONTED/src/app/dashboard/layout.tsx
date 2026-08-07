@@ -3,11 +3,27 @@
 import React, { useState, useEffect, Suspense } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import {
+  LayoutDashboard,
+  Link2,
+  Package,
+  ScrollText,
+  XCircle,
+  KeyRound,
+  Settings,
+  LucideIcon,
+} from "lucide-react";
 
 interface Organization {
   id: string;
   name: string;
   slug: string;
+}
+
+interface NavItem {
+  path: string;
+  label: string;
+  Icon: LucideIcon;
 }
 
 function DashboardSidebarContent({ children }: { children: React.ReactNode }) {
@@ -72,14 +88,14 @@ function DashboardSidebarContent({ children }: { children: React.ReactNode }) {
     router.push(`${pathname}?orgId=${newOrgId}`);
   };
 
-  const navItems = [
-    { path: "/dashboard", label: "Overview", icon: "🏠" },
-    { path: "/dashboard/endpoints", label: "Endpoints", icon: "🔗" },
-    { path: "/dashboard/events", label: "Events", icon: "📦" },
-    { path: "/dashboard/logs", label: "Delivery Logs", icon: "📜" },
-    { path: "/dashboard/failed", label: "Failed Deliveries", icon: "❌" },
-    { path: "/dashboard/keys", label: "API Credentials", icon: "🔑" },
-    { path: "/dashboard/settings", label: "Settings", icon: "⚙️" },
+  const navItems: NavItem[] = [
+    { path: "/dashboard", label: "Overview", Icon: LayoutDashboard },
+    { path: "/dashboard/endpoints", label: "Endpoints", Icon: Link2 },
+    { path: "/dashboard/events", label: "Events", Icon: Package },
+    { path: "/dashboard/logs", label: "Delivery Logs", Icon: ScrollText },
+    { path: "/dashboard/failed", label: "Failed Deliveries", Icon: XCircle },
+    { path: "/dashboard/keys", label: "API Credentials", Icon: KeyRound },
+    { path: "/dashboard/settings", label: "Settings", Icon: Settings },
   ];
 
   if (authLoading || (!user && !authLoading)) {
@@ -127,7 +143,6 @@ function DashboardSidebarContent({ children }: { children: React.ReactNode }) {
             </div>
           </div>
 
-          {/* Navigation Links */}
           <nav className="space-y-1">
             {navItems.map((item) => {
               const isActive = pathname === item.path;
@@ -141,7 +156,7 @@ function DashboardSidebarContent({ children }: { children: React.ReactNode }) {
                       : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100"
                   }`}
                 >
-                  <span>{item.icon}</span>
+                  <item.Icon size={14} strokeWidth={1.75} />
                   <span>{item.label}</span>
                 </button>
               );
