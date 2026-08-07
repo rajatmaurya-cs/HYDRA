@@ -180,16 +180,14 @@ export async function getOrganizationMetrics(req: AuthenticatedRequest, res: Res
       return;
     }
 
-    // 1. Total Event Delivery Webhook records for this organization
-    const totalEvents = await prisma.eventDeliveryWebhook.count({
+    // 1. Total Raw Events ingested for this organization
+    const totalEvents = await prisma.event.count({
       where: {
-        event: {
-          organizationId: orgId,
-        }
+        organizationId: orgId,
       }
     });
 
-    // 2. Total Successful Deliveries
+    // 2. Total Successful Webhook Deliveries
     const totalSuccessfulEvents = await prisma.eventDeliveryWebhook.count({
       where: {
         event: {
@@ -210,8 +208,9 @@ export async function getOrganizationMetrics(req: AuthenticatedRequest, res: Res
     });
 
     // 4. Success Rate percentage
-    const successRate = totalEvents > 0 
-      ? Number(((totalSuccessfulEvents / totalEvents) * 100).toFixed(1))
+    const totalDeliveryAttempts = totalSuccessfulEvents + totalFailedEvents;
+    const successRate = totalDeliveryAttempts > 0 
+      ? Number(((totalSuccessfulEvents / totalDeliveryAttempts) * 100).toFixed(1))
       : 100;
 
     // 5. Recent 10 Failed Deliveries
@@ -254,6 +253,85 @@ export async function getOrganizationMetrics(req: AuthenticatedRequest, res: Res
 
   } catch (error: any) {
     console.error("Get organization metrics error:", error);
+    res.status(500).json({ message: "Internal server error." });
+  }
+}
+
+export async function getOrganizationDeliveryLogs(req: AuthenticatedRequest, res: Response) {
+  try {
+    const orgIdParam = req.params.orgId;
+
+    const orgId = Array.isArray(orgIdParam) ? orgIdParam[0] : orgIdParam;
+    
+    const statusQuery = req.query.status as string | undefined;
+
+    if (!req.user) {
+      res.status(401).json({ message: "Unauthorized." });
+      return;
+    }
+
+    if (!orgId) {
+      res.status(400).json({ message: "Organization ID is required." });
+      return;
+    }
+
+    // Verify user owns organization
+    const org = await prisma.organization.findFirst({
+      where: {
+        id: orgId,
+        createdById: req.user.id,
+      }
+    });
+
+    if (!org) {
+      res.status(403).json({ message: "Forbidden or Organization not found." });
+      return;
+    }
+
+    // Build filter condition
+    const whereCondition: any = {
+      event: {
+        organizationId: orgId,
+      }
+    };
+
+    if (statusQuery && statusQuery !== 'ALL') {
+      whereCondition.status = statusQuery;
+    }
+
+    // Fetch EventDeliveryWebhook records with related Event and Endpoint metadata
+    const logs = await prisma.eventDeliveryWebhook.findMany({
+      where: whereCondition,
+      take: 100,
+      orderBy: {
+        createdAt: 'desc',
+      },
+      include: {
+        endpoint: {
+          select: {
+            id: true,
+            name: true,
+            url: true,
+          }
+        },
+        event: {
+          select: {
+            id: true,
+            eventType: true,
+            payload: true,
+            idempotencyKey: true,
+            createdAt: true,
+          }
+        }
+      }
+    });
+
+    res.status(200).json({
+      logs,
+    });
+
+  } catch (error: any) {
+    console.error("Get organization delivery logs error:", error);
     res.status(500).json({ message: "Internal server error." });
   }
 }

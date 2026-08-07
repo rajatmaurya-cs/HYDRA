@@ -81,13 +81,21 @@ export async function processOutboxEvents() {
 
         await produceMessage('webhook-events', ingestPayload, entry.event.idempotencyKey || entry.event.id);
 
-        await prisma.outbox.update({
-          where: { id: entry.id },
-          data: {
-            status: 'SENT',
-            publishedAt: new Date(),
-          },
-        });
+        await prisma.$transaction([
+          prisma.outbox.update({
+            where: { id: entry.id },
+            data: {
+              status: 'SENT',
+              publishedAt: new Date(),
+            },
+          }),
+          prisma.event.update({
+            where: { id: entry.event.id },
+            data: {
+              status: 'QUEUED',
+            },
+          }),
+        ]);
 
         console.log(`📤 Outbox Relay: Published event [${entry.eventId}] to Kafka successfully.`);
 

@@ -9,6 +9,36 @@ import { getSubscribedEndpoints, getEndpointMetadata } from '../lib/endpointCach
 interface DeliveryRecord {
   id: string;
   endpointId: string;
+  eventId: string;
+}
+
+export async function updateParentEventStatus(eventId: string): Promise<void> {
+  try {
+    const deliveries = await prisma.eventDeliveryWebhook.findMany({
+      where: { eventId },
+      select: { status: true },
+    });
+
+    if (deliveries.length === 0) return;
+
+    const allDelivered = deliveries.every((d) => d.status === 'DELIVERED');
+    const hasFailed = deliveries.some((d) => d.status === 'FAILED' || d.status === 'DEAD');
+
+    let newStatus: 'DELIVERED' | 'FAILED' | 'PROCESSING' = 'PROCESSING';
+
+    if (allDelivered) {
+      newStatus = 'DELIVERED';
+    } else if (hasFailed) {
+      newStatus = 'FAILED';
+    }
+
+    await prisma.event.update({
+      where: { id: eventId },
+      data: { status: newStatus },
+    });
+  } catch (error) {
+    console.error(`Failed to update parent Event [${eventId}] status:`, error);
+  }
 }
 
 export async function startBackgroundServices() {
@@ -32,13 +62,21 @@ export async function startBackgroundServices() {
 
         try {
           const rawData = JSON.parse(message.value.toString());
-          
           const { eventId, organizationId, eventType, payload } = rawData;
+          console.log(`📥 Kafka Consumer: Processing event [${eventId}] (${eventType}) for org [${organizationId}]...`);
 
           const endpointIds = await getSubscribedEndpoints(organizationId, eventType);
 
           if (endpointIds.length > 0) {
-            // Atomic UPSERT + RETURNING in a single SQL query replacing separate createMany & findMany
+            console.log(`🎯 Matched ${endpointIds.length} subscribed endpoint(s). Creating delivery webhooks...`);
+
+            // 1. Mark Event status as PROCESSING upon matching endpoints in Kafka consumer
+            await prisma.event.update({
+              where: { id: eventId },
+              data: { status: 'PROCESSING' },
+            });
+
+            // 2. Atomic UPSERT + RETURNING delivery records
             const deliveryRecords = await prisma.$queryRaw<DeliveryRecord[]>`
               INSERT INTO "EventDeliveryWebhook" (
                 "id",
@@ -63,7 +101,7 @@ export async function startBackgroundServices() {
                 )
               )}
               ON CONFLICT ("eventId", "endpointId") DO NOTHING
-              RETURNING id, "endpointId";
+              RETURNING id, "endpointId", "eventId";
             `;
 
             for (const delivery of deliveryRecords) {
@@ -75,6 +113,10 @@ export async function startBackgroundServices() {
                 eventType,
               });
             }
+
+            console.log(`✅ Fan-out complete: Queued ${deliveryRecords.length} BullMQ webhook job(s).`);
+          } else {
+            console.log(`⚠️ Kafka Consumer: 0 endpoints subscribed to event [${eventType}] for org [${organizationId}].`);
           }
 
           await consumer.commitOffsets([
@@ -88,9 +130,10 @@ export async function startBackgroundServices() {
     });
 
   } catch (kafkaError) {
-    console.error('❌ Failed to bootstrap Kafka consumer:', kafkaError);
+    console.error('❌ Failed to start Kafka consumer:', kafkaError);
   }
 
+  // BullMQ Worker to dispatch HTTP webhooks
   createWebhookWorker(async (job) => {
     const { deliveryId, endpointId, payload, eventType } = job.data;
     if (!deliveryId || !endpointId) return;
@@ -141,7 +184,7 @@ export async function startBackgroundServices() {
       if (response.ok) {
         await recordSuccess(endpointId);
 
-        await prisma.eventDeliveryWebhook.update({
+        const updatedDelivery = await prisma.eventDeliveryWebhook.update({
           where: { id: deliveryId },
           data: {
             status: 'DELIVERED',
@@ -149,13 +192,19 @@ export async function startBackgroundServices() {
             attemptCount: { increment: 1 },
             deliveredAt: new Date(),
           },
+          select: { eventId: true },
         });
+
         console.log(`✅ Webhook delivered successfully to ${endpoint.url}. Status: ${response.status}`);
+        
+        // Update parent Event status when all delivery webhooks succeed
+        await updateParentEventStatus(updatedDelivery.eventId);
+
       } else {
         
         await recordFailure(endpointId);
 
-        await prisma.eventDeliveryWebhook.update({
+        const updatedDelivery = await prisma.eventDeliveryWebhook.update({
           where: { id: deliveryId },
           data: {
             status: 'FAILED',
@@ -163,7 +212,10 @@ export async function startBackgroundServices() {
             attemptCount: { increment: 1 },
             errorMessage: `HTTP Status ${response.status}`,
           },
+          select: { eventId: true },
         });
+
+        await updateParentEventStatus(updatedDelivery.eventId);
         throw new Error(`Endpoint returned status code: ${response.status}`);
       }
 
@@ -171,14 +223,17 @@ export async function startBackgroundServices() {
       await recordFailure(endpointId);
 
       console.error(`❌ Webhook delivery attempt failed for ${endpoint.url}:`, networkError.message);
-      await prisma.eventDeliveryWebhook.update({
+      const updatedDelivery = await prisma.eventDeliveryWebhook.update({
         where: { id: deliveryId },
         data: {
           status: 'FAILED',
           attemptCount: { increment: 1 },
           errorMessage: networkError.message,
         },
+        select: { eventId: true },
       });
+
+      await updateParentEventStatus(updatedDelivery.eventId);
       throw networkError;
     }
   });

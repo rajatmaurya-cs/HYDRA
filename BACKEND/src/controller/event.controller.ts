@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import crypto from 'crypto';
 import { ApiKeyRequest } from '../middleware/apiKey.middleware';
+import { AuthenticatedRequest } from '../middleware/auth.middleware';
 import { appRedis } from '../lib/redis';
 import prisma from '../lib/prisma';
 
@@ -110,6 +111,69 @@ export async function createEvent(req: ApiKeyRequest, res: Response) {
 
   } catch (error: any) {
     console.error("Create event transactional ingestion error:", error);
+    res.status(500).json({ message: "Internal server error." });
+  }
+}
+
+export async function getOrganizationEvents(req: AuthenticatedRequest, res: Response) {
+  try {
+    const { organizationId } = req.query;
+
+    if (!req.user) {
+      res.status(401).json({ message: "Unauthorized." });
+      return;
+    }
+
+    if (!organizationId || typeof organizationId !== 'string') {
+      res.status(400).json({ message: "Organization ID is required." });
+      return;
+    }
+
+    // Verify user owns organization
+    const org = await prisma.organization.findFirst({
+      where: {
+        id: organizationId,
+        createdById: req.user.id,
+      },
+    });
+
+    if (!org) {
+      res.status(403).json({ message: "Forbidden or Organization not found." });
+      return;
+    }
+
+    // Fetch raw Event records with associated Webhook Endpoint targets
+    const events = await prisma.event.findMany({
+      where: {
+        organizationId,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      take: 50,
+      include: {
+        webhookDeliveries: {
+          select: {
+            id: true,
+            status: true,
+            endpoint: {
+              select: {
+                id: true,
+                name: true,
+                url: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    res.status(200).json({
+      events,
+    });
+
+  } catch (error: any) {
+    console.error("Get organization events error:", error);
     res.status(500).json({ message: "Internal server error." });
   }
 }
