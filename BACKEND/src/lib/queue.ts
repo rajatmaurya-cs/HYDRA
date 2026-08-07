@@ -1,4 +1,5 @@
 import { Queue, Worker, Job } from 'bullmq';
+import prisma from './prisma';
 import { queueRedis } from './redis';
 
 export const WEBHOOK_QUEUE_NAME = 'webhook-delivery-queue';
@@ -27,6 +28,96 @@ export async function addWebhookJob(jobName: string, data: any) {
   }
 }
 
+/**
+ * Re-enqueue a single Dead Delivery record back into BullMQ for delivery attempt
+ */
+export async function reEnqueueDeadDelivery(deliveryId: string, organizationId?: string) {
+  try {
+    // 1. Fetch Dead delivery record with related event and endpoint metadata
+    const delivery = await prisma.eventDeliveryWebhook.findUnique({
+      where: { id: deliveryId },
+      include: {
+        event: {
+          select: {
+            organizationId: true,
+            eventType: true,
+            payload: true,
+          },
+        },
+      },
+    });
+
+    if (!delivery) {
+      throw new Error(`Delivery record [${deliveryId}] not found.`);
+    }
+
+    if (delivery.status !== 'DEAD' && delivery.status !== 'FAILED') {
+      throw new Error(`Delivery record [${deliveryId}] is not in DEAD or FAILED status (Current: ${delivery.status}).`);
+    }
+
+    if (organizationId && delivery.event.organizationId !== organizationId) {
+      throw new Error(`Forbidden: Delivery [${deliveryId}] does not belong to organization [${organizationId}].`);
+    }
+
+    // 2. Reset status in PostgreSQL back to PENDING before re-enqueuing
+    await prisma.eventDeliveryWebhook.update({
+      where: { id: deliveryId },
+      data: {
+        status: 'PENDING',
+        errorMessage: null,
+      },
+    });
+
+    // 3. Add fresh job to BullMQ queue
+    const job = await addWebhookJob(delivery.id, {
+      deliveryId: delivery.id,
+      endpointId: delivery.endpointId,
+      organizationId: delivery.event.organizationId,
+      payload: delivery.event.payload,
+      eventType: delivery.event.eventType,
+    });
+
+    console.log(`🔄 Successfully re-enqueued Dead Delivery [${deliveryId}] into BullMQ. Job ID: ${job.id}`);
+    return job;
+
+  } catch (error) {
+    console.error(`❌ Failed to re-enqueue Dead Delivery [${deliveryId}]:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Re-enqueue all Dead Delivery records for an organization
+ */
+export async function reEnqueueAllDeadDeliveries(organizationId: string) {
+  try {
+    const deadDeliveries = await prisma.eventDeliveryWebhook.findMany({
+      where: {
+        event: {
+          organizationId,
+        },
+        status: 'DEAD',
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    console.log(`🔄 Found ${deadDeliveries.length} DEAD deliveries for organization [${organizationId}]. Re-enqueuing...`);
+
+    const reEnqueuedJobs = [];
+    for (const d of deadDeliveries) {
+      const job = await reEnqueueDeadDelivery(d.id, organizationId);
+      reEnqueuedJobs.push(job);
+    }
+
+    return reEnqueuedJobs;
+  } catch (error) {
+    console.error(`❌ Failed to re-enqueue all Dead Deliveries for organization [${organizationId}]:`, error);
+    throw error;
+  }
+}
+
 export function createWebhookWorker(processor: (job: Job) => Promise<void>): Worker {
   const worker = new Worker(WEBHOOK_QUEUE_NAME, processor, {
     connection: queueRedis,
@@ -38,7 +129,9 @@ export function createWebhookWorker(processor: (job: Job) => Promise<void>): Wor
   });
 
   worker.on('failed', (job: Job | undefined, err: Error) => {
-    console.error(`❌ BullMQ Worker: Job ${job?.id} failed (Attempt ${job?.attemptsMade}/${job?.opts.attempts || 5}):`, err.message);
+    if (!job) return;
+    const maxAttempts = job.opts.attempts || 5;
+    console.error(`❌ BullMQ Worker: Job ${job.id} failed (Attempt ${job.attemptsMade}/${maxAttempts}): ${err.message}`);
   });
 
   return worker;

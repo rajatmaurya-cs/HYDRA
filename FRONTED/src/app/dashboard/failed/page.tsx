@@ -21,7 +21,7 @@ interface FailedDelivery {
   id: string;
   eventId: string;
   endpointId: string;
-  status: "FAILED" | "DEAD";
+  status: "FAILED" | "DEAD" | "PENDING";
   statusCode: number | null;
   errorMessage: string | null;
   attemptCount: number;
@@ -36,6 +36,8 @@ function FailedPageContent() {
 
   const [failedDeliveries, setFailedDeliveries] = useState<FailedDelivery[]>([]);
   const [loading, setLoading] = useState(true);
+  const [retryingId, setRetryingId] = useState<string | null>(null);
+  const [retryingAll, setRetryingAll] = useState(false);
   const [selectedPayload, setSelectedPayload] = useState<any | null>(null);
 
   useEffect(() => {
@@ -47,8 +49,7 @@ function FailedPageContent() {
   const fetchFailedDeliveries = async (targetOrgId: string) => {
     setLoading(true);
     try {
-      // Fetch both FAILED and DEAD status deliveries
-      const res = await fetch(`http://localhost:2000/api/organizations/${targetOrgId}/logs?status=FAILED`, {
+      const res = await fetch(`http://localhost:2000/api/organizations/${targetOrgId}/logs?status=DEAD`, {
         credentials: "include",
       });
       if (res.ok) {
@@ -62,25 +63,105 @@ function FailedPageContent() {
     }
   };
 
+  const handleRetrySingle = async (deliveryId: string) => {
+    if (!orgId) return;
+    setRetryingId(deliveryId);
+
+    // 1. Optimistic UI update: Immediately reflect "PENDING" status on the card/table
+    setFailedDeliveries((prev) =>
+      prev.map((item) =>
+        item.id === deliveryId ? { ...item, status: "PENDING" } : item
+      )
+    );
+
+    try {
+      const res = await fetch(`http://localhost:2000/api/organizations/${orgId}/logs/${deliveryId}/retry`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (res.ok) {
+        // 2. Wait 1.5 seconds for BullMQ execution, then refetch clean DLQ list
+        setTimeout(() => {
+          fetchFailedDeliveries(orgId);
+        }, 1500);
+      } else {
+        const errData = await res.json();
+        alert(`Retry failed: ${errData.message}`);
+        fetchFailedDeliveries(orgId);
+      }
+    } catch (error) {
+      console.error("Error retrying dead job:", error);
+      fetchFailedDeliveries(orgId);
+    } finally {
+      setRetryingId(null);
+    }
+  };
+
+  const handleRetryAll = async () => {
+    if (!orgId) return;
+    if (!confirm("Are you sure you want to retry all DEAD jobs for this organization?")) return;
+
+    setRetryingAll(true);
+
+    // 1. Optimistic UI update: Mark all dead jobs as PENDING instantly
+    setFailedDeliveries((prev) =>
+      prev.map((item) => ({ ...item, status: "PENDING" }))
+    );
+
+    try {
+      const res = await fetch(`http://localhost:2000/api/organizations/${orgId}/logs/retry-all`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (res.ok) {
+        // 2. Wait 2 seconds for worker execution, then refetch updated list
+        setTimeout(() => {
+          fetchFailedDeliveries(orgId);
+        }, 2000);
+      } else {
+        const errData = await res.json();
+        alert(`Retry All failed: ${errData.message}`);
+        fetchFailedDeliveries(orgId);
+      }
+    } catch (error) {
+      console.error("Error retrying all dead jobs:", error);
+      fetchFailedDeliveries(orgId);
+    } finally {
+      setRetryingAll(false);
+    }
+  };
+
   return (
     <div className="space-y-6 font-sans">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-neutral-200 pb-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-neutral-200 pb-4 mb-6">
         <div>
           <h1 className="text-2xl font-medium tracking-tight text-neutral-900 flex items-center gap-2">
-            ❌ Failed Deliveries & DLQ
+            ❌ Dead Letter Queue (DLQ)
           </h1>
           <p className="text-neutral-500 text-xs mt-0.5 font-normal">
-            Failed webhook delivery attempts and Dead Letter Queue (DLQ) records
+            Exhausted webhook deliveries requiring manual re-drive or retry
           </p>
         </div>
 
-        <button
-          onClick={() => orgId && fetchFailedDeliveries(orgId)}
-          className="px-3 py-1.5 bg-neutral-100 hover:bg-neutral-200 border border-neutral-200 text-neutral-800 rounded-md text-xs font-normal transition-all cursor-pointer flex items-center gap-1"
-        >
-          🔄 Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          {failedDeliveries.length > 0 && (
+            <button
+              onClick={handleRetryAll}
+              disabled={retryingAll}
+              className="px-3 py-1.5 bg-black hover:bg-neutral-800 disabled:opacity-50 text-white rounded-md text-xs font-normal transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs active:scale-95"
+            >
+              {retryingAll ? "🔄 Retrying All..." : "🔁 Retry All Dead Jobs"}
+            </button>
+          )}
+
+          <button
+            onClick={() => orgId && fetchFailedDeliveries(orgId)}
+            className="px-3 py-1.5 bg-neutral-100 hover:bg-neutral-200 border border-neutral-200 text-neutral-800 rounded-md text-xs font-normal transition-all cursor-pointer flex items-center gap-1"
+          >
+            🔄 Refresh
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -89,7 +170,7 @@ function FailedPageContent() {
         </div>
       ) : failedDeliveries.length === 0 ? (
         <div className="text-center py-14 bg-neutral-50 border border-neutral-200 rounded-xl p-6">
-          <h3 className="text-sm font-medium text-neutral-900">🎉 No failed deliveries!</h3>
+          <h3 className="text-sm font-medium text-neutral-900">🎉 No dead deliveries!</h3>
           <p className="text-neutral-500 text-xs mt-1 font-normal">
             All webhook events for this organization have been delivered successfully.
           </p>
@@ -107,7 +188,7 @@ function FailedPageContent() {
                   <th className="py-3 px-4">Attempts</th>
                   <th className="py-3 px-4">Error Message</th>
                   <th className="py-3 px-4">Timestamp</th>
-                  <th className="py-3 px-4 text-right">Inspect</th>
+                  <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100">
@@ -133,15 +214,15 @@ function FailedPageContent() {
                       </code>
                     </td>
 
-                    {/* Status Badge */}
+                    {/* Status Badge with Live Transition Feedback */}
                     <td className="py-3.5 px-4">
-                      {item.status === "DEAD" ? (
-                        <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-purple-50 text-purple-700 border border-purple-200 uppercase">
-                          DEAD (DLQ)
+                      {item.status === "PENDING" ? (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200 uppercase animate-pulse">
+                          RE-QUEUED 🔄
                         </span>
                       ) : (
-                        <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-rose-50 text-rose-700 border border-rose-200 uppercase">
-                          FAILED ({item.statusCode || "ERR"})
+                        <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-purple-50 text-purple-700 border border-purple-200 uppercase">
+                          DEAD (DLQ)
                         </span>
                       )}
                     </td>
@@ -152,7 +233,7 @@ function FailedPageContent() {
                     </td>
 
                     {/* Error Message */}
-                    <td className="py-3.5 px-4 text-rose-600 font-mono text-[11px] max-w-[220px] truncate">
+                    <td className="py-3.5 px-4 text-rose-600 font-mono text-[11px] max-w-[200px] truncate">
                       {item.errorMessage || "Delivery Error"}
                     </td>
 
@@ -161,22 +242,31 @@ function FailedPageContent() {
                       {new Date(item.createdAt).toLocaleString()}
                     </td>
 
-                    {/* Action */}
+                    {/* Actions: Retry per job & Inspect */}
                     <td className="py-3.5 px-4 text-right">
-                      <button
-                        onClick={() => setSelectedPayload({
-                          deliveryId: item.id,
-                          eventId: item.eventId,
-                          endpointUrl: item.endpoint.url,
-                          statusCode: item.statusCode,
-                          errorMessage: item.errorMessage,
-                          attemptCount: item.attemptCount,
-                          payload: item.event.payload,
-                        })}
-                        className="px-2.5 py-1 bg-black hover:bg-neutral-800 text-white rounded text-[11px] font-normal cursor-pointer transition-all active:scale-95"
-                      >
-                        Inspect
-                      </button>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => handleRetrySingle(item.id)}
+                          disabled={retryingId === item.id || item.status === "PENDING"}
+                          className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded text-[11px] font-normal cursor-pointer transition-all active:scale-95 flex items-center gap-1"
+                        >
+                          {retryingId === item.id || item.status === "PENDING" ? "🔄 Queued" : "🔁 Retry"}
+                        </button>
+                        <button
+                          onClick={() => setSelectedPayload({
+                            deliveryId: item.id,
+                            eventId: item.eventId,
+                            endpointUrl: item.endpoint.url,
+                            statusCode: item.statusCode,
+                            errorMessage: item.errorMessage,
+                            attemptCount: item.attemptCount,
+                            payload: item.event.payload,
+                          })}
+                          className="px-2.5 py-1 bg-neutral-900 hover:bg-neutral-800 text-white rounded text-[11px] font-normal cursor-pointer transition-all active:scale-95"
+                        >
+                          Inspect
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -196,7 +286,7 @@ function FailedPageContent() {
             >
               ✕
             </button>
-            <h3 className="text-base font-medium text-neutral-900 mb-3">Failed Delivery Details</h3>
+            <h3 className="text-base font-medium text-neutral-900 mb-3">Dead Delivery Details</h3>
 
             <div className="space-y-2.5 mb-4 text-neutral-700">
               <div className="flex justify-between border-b border-neutral-100 pb-2">

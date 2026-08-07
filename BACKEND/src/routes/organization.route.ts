@@ -5,7 +5,9 @@ import {
   getUserOrganizations, 
   getOrganizationById, 
   getOrganizationMetrics,
-  getOrganizationDeliveryLogs 
+  getOrganizationDeliveryLogs,
+  retrySingleDeadDelivery,
+  retryAllDeadDeliveriesForOrg
 } from '../controller/organization.controller';
 
 const organizationRoutes = express.Router();
@@ -15,5 +17,9 @@ organizationRoutes.get('/', requireAuth, getUserOrganizations);
 organizationRoutes.get('/:orgId', requireAuth, getOrganizationById);
 organizationRoutes.get('/:orgId/metrics', requireAuth, getOrganizationMetrics);
 organizationRoutes.get('/:orgId/logs', requireAuth, getOrganizationDeliveryLogs);
+
+// Retry DLQ Routes
+organizationRoutes.post('/:orgId/logs/:deliveryId/retry', requireAuth, retrySingleDeadDelivery);
+organizationRoutes.post('/:orgId/logs/retry-all', requireAuth, retryAllDeadDeliveriesForOrg);
 
 export default organizationRoutes;

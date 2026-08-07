@@ -2,6 +2,7 @@ import { Response } from 'express';
 import crypto from 'crypto';
 import prisma from '../lib/prisma';
 import { AuthenticatedRequest } from '../middleware/auth.middleware';
+import { reEnqueueDeadDelivery, reEnqueueAllDeadDeliveries } from '../lib/queue';
 
 export async function createOrganization(req: AuthenticatedRequest, res: Response) {
   try {
@@ -260,9 +261,7 @@ export async function getOrganizationMetrics(req: AuthenticatedRequest, res: Res
 export async function getOrganizationDeliveryLogs(req: AuthenticatedRequest, res: Response) {
   try {
     const orgIdParam = req.params.orgId;
-
     const orgId = Array.isArray(orgIdParam) ? orgIdParam[0] : orgIdParam;
-    
     const statusQuery = req.query.status as string | undefined;
 
     if (!req.user) {
@@ -333,5 +332,90 @@ export async function getOrganizationDeliveryLogs(req: AuthenticatedRequest, res
   } catch (error: any) {
     console.error("Get organization delivery logs error:", error);
     res.status(500).json({ message: "Internal server error." });
+  }
+}
+
+export async function retrySingleDeadDelivery(req: AuthenticatedRequest, res: Response) {
+  try {
+    const orgIdParam = req.params.orgId;
+    const deliveryIdParam = req.params.deliveryId;
+
+    const orgId = Array.isArray(orgIdParam) ? orgIdParam[0] : orgIdParam;
+    const deliveryId = Array.isArray(deliveryIdParam) ? deliveryIdParam[0] : deliveryIdParam;
+
+    if (!req.user) {
+      res.status(401).json({ message: "Unauthorized." });
+      return;
+    }
+
+    if (!orgId || !deliveryId) {
+      res.status(400).json({ message: "Organization ID and Delivery ID are required." });
+      return;
+    }
+
+    // Verify user owns organization
+    const org = await prisma.organization.findFirst({
+      where: {
+        id: orgId,
+        createdById: req.user.id,
+      }
+    });
+
+    if (!org) {
+      res.status(403).json({ message: "Forbidden or Organization not found." });
+      return;
+    }
+
+    const job = await reEnqueueDeadDelivery(deliveryId, orgId);
+
+    res.status(200).json({
+      message: `Delivery [${deliveryId}] successfully re-queued for retry.`,
+      jobId: job.id,
+    });
+
+  } catch (error: any) {
+    console.error("Retry single dead delivery error:", error);
+    res.status(500).json({ message: error.message || "Internal server error." });
+  }
+}
+
+export async function retryAllDeadDeliveriesForOrg(req: AuthenticatedRequest, res: Response) {
+  try {
+    const orgIdParam = req.params.orgId;
+    const orgId = Array.isArray(orgIdParam) ? orgIdParam[0] : orgIdParam;
+
+    if (!req.user) {
+      res.status(401).json({ message: "Unauthorized." });
+      return;
+    }
+
+    if (!orgId) {
+      res.status(400).json({ message: "Organization ID is required." });
+      return;
+    }
+
+    // Verify user owns organization
+    const org = await prisma.organization.findFirst({
+      where: {
+        id: orgId,
+        createdById: req.user.id,
+      }
+    });
+
+    if (!org) {
+      res.status(403).json({ message: "Forbidden or Organization not found." });
+      return;
+    }
+
+    const retriedJobs = await reEnqueueAllDeadDeliveries(orgId);
+
+    res.status(200).json({
+      message: `Successfully re-queued ${retriedJobs.length} dead delivery jobs for retry.`,
+      count: retriedJobs.length,
+    });
+
+  } catch (error: any) {
+    console.error("Retry all dead deliveries error:", error);
+    res.status(500).json({ message: error.message || "Internal server error." });
   }
 }
