@@ -382,6 +382,7 @@ export async function retrySingleDeadDelivery(req: AuthenticatedRequest, res: Re
 export async function retryAllDeadDeliveriesForOrg(req: AuthenticatedRequest, res: Response) {
   try {
     const orgIdParam = req.params.orgId;
+    
     const orgId = Array.isArray(orgIdParam) ? orgIdParam[0] : orgIdParam;
 
     if (!req.user) {

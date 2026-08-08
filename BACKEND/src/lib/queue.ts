@@ -68,6 +68,17 @@ export async function reEnqueueDeadDelivery(deliveryId: string, organizationId?:
       },
     });
 
+    // 3. Reset parent Event counters and status back to PROCESSING
+    await prisma.event.update({
+      where: { id: delivery.eventId },
+      data: {
+        failedCount: {
+          decrement: 1,
+        },
+        status: 'PROCESSING',
+      },
+    });
+
     // 3. Add fresh job to BullMQ queue
     const job = await addWebhookJob(delivery.id, {
       deliveryId: delivery.id,

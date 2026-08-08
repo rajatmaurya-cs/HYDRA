@@ -184,6 +184,8 @@ export async function startBackgroundServices() {
       'User-Agent': 'Hydra-Webhook-Dispatcher/1.0',
     };
 
+    let httpStatusCode: number | null = null;
+
     try {
       console.log(`🚀 Dispatching webhook event [${eventType}] to: ${endpoint.url}`);
 
@@ -213,30 +215,7 @@ export async function startBackgroundServices() {
         await incrementDeliveredCount(updatedDelivery.eventId);
 
       } else {
-        
-        await recordFailure(endpointId);
-
-        const attemptsMade = job.attemptsMade + 1;
-        const maxAttempts = job.opts.attempts || 5;
-        const isFinalAttempt = attemptsMade >= maxAttempts;
-        const newDeliveryStatus = isFinalAttempt ? 'DEAD' : 'FAILED';
-
-        const updatedDelivery = await prisma.eventDeliveryWebhook.update({
-          where: { id: deliveryId },
-          data: {
-            status: newDeliveryStatus,
-            statusCode: response.status,
-            attemptCount: attemptsMade,
-            errorMessage: `HTTP Status ${response.status}`,
-          },
-          select: { eventId: true },
-        });
-
-        if (isFinalAttempt) {
-          console.warn(`☠️ Delivery [${deliveryId}] exhausted all ${maxAttempts} attempts. Marked as DEAD in PostgreSQL.`);
-          await incrementFailedCount(updatedDelivery.eventId);
-        }
-
+        httpStatusCode = response.status;
         throw new Error(`Endpoint returned status code: ${response.status}`);
       }
 
@@ -254,6 +233,7 @@ export async function startBackgroundServices() {
         where: { id: deliveryId },
         data: {
           status: newDeliveryStatus,
+          statusCode: httpStatusCode,
           attemptCount: attemptsMade,
           errorMessage: networkError.message,
         },

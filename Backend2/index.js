@@ -6,13 +6,13 @@ const PORT = process.env.PORT || 4000;
 app.use(express.json());
 
 // Hardcoded Default Credentials for quick testing
-const HARDCODED_API_KEY = "hdr_test_a18cee2a7b445fc0e8a0f296bb5614e11a3dece1cf056076ff427fa277186718";
-const HARDCODED_EVENT_TYPE = "email.sent";
+const HARDCODED_API_KEY = "hdr_test_b4b4afaea8bd93c540bde814e7a8bac5d6954da632f69cfd411d2096ed455137";
+const HARDCODED_EVENT_TYPE = "user.find";
 const HARDCODED_PAYLOAD = {
   paymentId: "pay_998877",
-  amount: 2500,
+  amount: 200,
   currency: "INR",
-  customer: "Rajat Maurya",
+  customer: "Abhinav Singh",
   status: "COMPLETED"
 };
 
