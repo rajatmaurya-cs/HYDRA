@@ -182,14 +182,23 @@ export async function getOrganizationMetrics(req: AuthenticatedRequest, res: Res
     }
 
     // 1. Total Raw Events ingested for this organization
-    const totalEvents = await prisma.event.count({
+    const eventsIngested = await prisma.event.count({
       where: {
         organizationId: orgId,
       }
     });
 
-    // 2. Total Successful Webhook Deliveries
-    const totalSuccessfulEvents = await prisma.eventDeliveryWebhook.count({
+    // 2. Total Endpoint Deliveries created
+    const totalDeliveries = await prisma.eventDeliveryWebhook.count({
+      where: {
+        event: {
+          organizationId: orgId,
+        },
+      }
+    });
+
+    // 3. Successful Deliveries
+    const successfulDeliveries = await prisma.eventDeliveryWebhook.count({
       where: {
         event: {
           organizationId: orgId,
@@ -198,8 +207,8 @@ export async function getOrganizationMetrics(req: AuthenticatedRequest, res: Res
       }
     });
 
-    // 3. Total Failed Deliveries (FAILED or DEAD)
-    const totalFailedEvents = await prisma.eventDeliveryWebhook.count({
+    // 4. Failed / Dead Deliveries
+    const failedDeadDeliveries = await prisma.eventDeliveryWebhook.count({
       where: {
         event: {
           organizationId: orgId,
@@ -208,13 +217,43 @@ export async function getOrganizationMetrics(req: AuthenticatedRequest, res: Res
       }
     });
 
-    // 4. Success Rate percentage
-    const totalDeliveryAttempts = totalSuccessfulEvents + totalFailedEvents;
-    const successRate = totalDeliveryAttempts > 0 
-      ? Number(((totalSuccessfulEvents / totalDeliveryAttempts) * 100).toFixed(1))
+    // 5. Success Rate percentage (Successful Deliveries / Total Deliveries)
+    const successRate = totalDeliveries > 0 
+      ? Number(((successfulDeliveries / totalDeliveries) * 100).toFixed(1))
       : 100;
 
-    // 5. Recent 10 Failed Deliveries
+    // 6. Average & P95 Latency Calculation
+    const latencyRecords = await prisma.eventDeliveryWebhook.findMany({
+      where: {
+        event: {
+          organizationId: orgId,
+        },
+        latencyMs: {
+          not: null,
+        },
+      },
+      select: {
+        latencyMs: true,
+      },
+      orderBy: {
+        latencyMs: 'asc',
+      },
+    });
+
+    let avgLatencyMs = 0;
+    let p95LatencyMs = 0;
+
+    if (latencyRecords.length > 0) {
+      const latencies = latencyRecords.map((r) => r.latencyMs as number);
+      const totalLatency = latencies.reduce((sum, val) => sum + val, 0);
+      avgLatencyMs = Math.round(totalLatency / latencies.length);
+
+      // P95 index calculation: 95th percentile
+      const p95Index = Math.floor(latencies.length * 0.95);
+      p95LatencyMs = latencies[Math.min(p95Index, latencies.length - 1)];
+    }
+
+    // 7. Recent 10 Failed Deliveries
     const recentFailedJobs = await prisma.eventDeliveryWebhook.findMany({
       where: {
         event: {
@@ -244,10 +283,13 @@ export async function getOrganizationMetrics(req: AuthenticatedRequest, res: Res
 
     res.status(200).json({
       metrics: {
-        totalEvents,
-        totalSuccessfulEvents,
-        totalFailedEvents,
+        eventsIngested,
+        totalDeliveries,
+        successfulDeliveries,
+        failedDeadDeliveries,
         successRate,
+        avgLatencyMs,
+        p95LatencyMs,
         recentFailedJobs
       }
     });

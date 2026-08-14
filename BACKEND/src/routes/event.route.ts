@@ -6,6 +6,7 @@ import { createEvent, getOrganizationEvents } from '../controller/event.controll
 const eventRoutes = express.Router();
 
 eventRoutes.post('/', requireApiKey, createEvent);
+
 eventRoutes.get('/', requireAuth, getOrganizationEvents);
 
 export default eventRoutes;

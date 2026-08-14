@@ -52,6 +52,7 @@ export async function incrementFailedCount(eventId: string): Promise<void> {
 }
 
 export async function startBackgroundServices() {
+  
   console.log('📡 Initializing background event processing services...');
 
   await ensureTopicExists('webhook-events');
@@ -185,15 +186,21 @@ export async function startBackgroundServices() {
     };
 
     let httpStatusCode: number | null = null;
+    let startedAt: Date | null = null;
+    let completedAt: Date | null = null;
+    let latencyMs: number | null = null;
 
     try {
       console.log(`🚀 Dispatching webhook event [${eventType}] to: ${endpoint.url}`);
 
+      startedAt = new Date();
       const response = await fetch(endpoint.url, {
         method: 'POST',
         headers,
         body: JSON.stringify(payload),
       });
+      completedAt = new Date();
+      latencyMs = completedAt.getTime() - startedAt.getTime();
 
       if (response.ok) {
         await recordSuccess(endpointId);
@@ -205,6 +212,9 @@ export async function startBackgroundServices() {
             statusCode: response.status,
             attemptCount: { increment: 1 },
             deliveredAt: new Date(),
+            startedAt,
+            completedAt,
+            latencyMs,
           },
           select: { eventId: true },
         });
@@ -220,6 +230,11 @@ export async function startBackgroundServices() {
       }
 
     } catch (networkError: any) {
+      if (!completedAt && startedAt) {
+        completedAt = new Date();
+        latencyMs = completedAt.getTime() - startedAt.getTime();
+      }
+
       await recordFailure(endpointId);
 
       console.error(`❌ Webhook delivery attempt failed for ${endpoint.url}:`, networkError.message);
@@ -236,6 +251,9 @@ export async function startBackgroundServices() {
           statusCode: httpStatusCode,
           attemptCount: attemptsMade,
           errorMessage: networkError.message,
+          startedAt,
+          completedAt,
+          latencyMs,
         },
         select: { eventId: true },
       });

@@ -17,6 +17,10 @@ model EventDeliveryWebhook {
 
   deliveredAt DateTime?
 
+  startedAt      DateTime?
+  completedAt    DateTime?
+  latencyMs      Int?
+
   createdAt DateTime @default(now())
 
   updatedAt DateTime @updatedAt

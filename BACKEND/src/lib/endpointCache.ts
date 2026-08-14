@@ -13,6 +13,7 @@ export async function getSubscribedEndpoints(
   organizationId: string,
   eventType: string
 ): Promise<string[]> {
+  
   const redisKey = `subscriptions:${organizationId}`;
 
   const cached = await appRedis.hget(redisKey, eventType);
@@ -48,13 +49,6 @@ export async function invalidateSubscriptionCache(organizationId: string): Promi
   const redisKey = `subscriptions:${organizationId}`;
   await appRedis.del(redisKey);
 }
-
-
-
-
-
-
-
 
 
 
