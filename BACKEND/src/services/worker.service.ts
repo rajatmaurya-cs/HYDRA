@@ -198,6 +198,7 @@ export async function startBackgroundServices() {
         method: 'POST',
         headers,
         body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(10000),
       });
       completedAt = new Date();
       latencyMs = completedAt.getTime() - startedAt.getTime();
