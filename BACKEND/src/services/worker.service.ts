@@ -242,7 +242,10 @@ export async function startBackgroundServices() {
       
       const attemptsMade = job.attemptsMade + 1;
       const maxAttempts = job.opts.attempts || 5;
-      const isFinalAttempt = attemptsMade >= maxAttempts;
+      
+      // Non-retriable: 4xx Client Errors (e.g. 400, 401, 404) should fail permanently immediately
+      const isNonRetriable = httpStatusCode !== null && httpStatusCode >= 400 && httpStatusCode < 500;
+      const isFinalAttempt = isNonRetriable || (attemptsMade >= maxAttempts);
       const newDeliveryStatus = isFinalAttempt ? 'DEAD' : 'FAILED';
 
       const updatedDelivery = await prisma.eventDeliveryWebhook.update({
@@ -260,11 +263,17 @@ export async function startBackgroundServices() {
       });
 
       if (isFinalAttempt) {
-        console.warn(`☠️ Delivery [${deliveryId}] exhausted all ${maxAttempts} attempts. Marked as DEAD in PostgreSQL.`);
+        const reason = isNonRetriable 
+          ? `Non-retriable 4xx response (${httpStatusCode})`
+          : `exhausted all ${maxAttempts} attempts`;
+        console.warn(`☠️ Delivery [${deliveryId}] ${reason}. Marked as DEAD in PostgreSQL.`);
         await incrementFailedCount(updatedDelivery.eventId);
       }
 
-      throw networkError;
+      // Re-throw to trigger BullMQ retry ONLY if it is a retriable failure (5xx or network error) and attempts remain
+      if (!isNonRetriable) {
+        throw networkError;
+      }
     }
   });
 }
