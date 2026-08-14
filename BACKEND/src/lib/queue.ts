@@ -17,9 +17,17 @@ export const webhookQueue = new Queue(WEBHOOK_QUEUE_NAME, {
   },
 });
 
-export async function addWebhookJob(jobName: string, data: any) {
+export async function addWebhookJob(jobName: string, data: any, jobId?: string) {
   try {
-    const job = await webhookQueue.add(jobName, data);
+    const job = await webhookQueue.add(
+
+      jobName,
+
+      data, {
+      jobId: jobId || data?.deliveryId || undefined,
+
+    });
+    
     console.log(`✉️ Added job [${jobName}] to BullMQ with ID: ${job.id}`);
     return job;
   } catch (error) {
