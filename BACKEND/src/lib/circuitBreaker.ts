@@ -1,8 +1,8 @@
 import { appRedis } from './redis';
 
 const FAILURE_THRESHOLD = 5;
-
-const OPEN_TIMEOUT = 60000;
+const OPEN_TIMEOUT = 60000; // 60 seconds cooldown before moving to HALF_OPEN
+const HALF_OPEN_LEASE = 15000; // 15 seconds probe lease timeout
 
 const canRequestLua = `
 local state = redis.call("HGET", KEYS[1], "state")
@@ -12,8 +12,18 @@ if not state then
     return 1
 end
 
--- Someone is already testing
+-- Someone is testing in HALF_OPEN state
 if state == "HALF_OPEN" then
+    local halfOpenAt = tonumber(redis.call("HGET", KEYS[1], "halfOpenAt") or "0")
+    local now = tonumber(ARGV[1])
+    local halfOpenLease = tonumber(ARGV[3])
+
+    -- If probe lease expired (worker crashed/hung), allow another worker to probe
+    if (now - halfOpenAt) > halfOpenLease then
+        redis.call("HSET", KEYS[1], "halfOpenAt", ARGV[1])
+        return 1
+    end
+
     return 0
 end
 
@@ -29,6 +39,7 @@ local timeout = tonumber(ARGV[2])
 
 if (now - openedAt) > timeout then
     redis.call("HSET", KEYS[1], "state", "HALF_OPEN")
+    redis.call("HSET", KEYS[1], "halfOpenAt", ARGV[1])
     return 1
 end
 
@@ -36,9 +47,7 @@ return 0
 `;
 
 export async function canRequest(endpointId: string): Promise<boolean> {
-
   const key = `circuit:${endpointId}`;
-
   const now = Date.now();
 
   const result = await appRedis.eval(
@@ -46,7 +55,8 @@ export async function canRequest(endpointId: string): Promise<boolean> {
     1,
     key,
     now.toString(),
-    OPEN_TIMEOUT.toString()
+    OPEN_TIMEOUT.toString(),
+    HALF_OPEN_LEASE.toString()
   );
 
   return result === 1;

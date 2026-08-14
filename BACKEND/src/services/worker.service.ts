@@ -73,7 +73,9 @@ export async function startBackgroundServices() {
 
         try {
           const rawData = JSON.parse(message.value.toString());
+
           const { eventId, organizationId, eventType, payload } = rawData;
+          
           console.log(`📥 Kafka Consumer: Processing event [${eventId}] (${eventType}) for org [${organizationId}]...`);
 
           const endpointIds = await getSubscribedEndpoints(organizationId, eventType);
@@ -90,8 +92,8 @@ export async function startBackgroundServices() {
               },
             });
 
-            // Atomic UPSERT + RETURNING delivery records
-            const deliveryRecords = await prisma.$queryRaw<DeliveryRecord[]>`
+            // 1. Blindly attempt to insert delivery records (ON CONFLICT DO NOTHING handles duplicates)
+            await prisma.$queryRaw`
               INSERT INTO "EventDeliveryWebhook" (
                 "id",
                 "eventId",
@@ -114,11 +116,27 @@ export async function startBackgroundServices() {
                 `
                 )
               )}
-              ON CONFLICT ("eventId", "endpointId") DO NOTHING
-              RETURNING id, "endpointId", "eventId";
+              ON CONFLICT ("eventId", "endpointId") DO NOTHING;
             `;
 
-            for (const delivery of deliveryRecords) {
+            // 2. Smart Re-fetch: Retrieve ALL PENDING delivery records for this event + endpoints.
+            // On Kafka consumer retry or rebalance, this reliably picks up any delivery records
+            // that were already created in DB but failed to enqueue into BullMQ before a crash.
+            const pendingDeliveries = await prisma.eventDeliveryWebhook.findMany({
+              where: {
+                eventId,
+                endpointId: { in: endpointIds },
+                status: 'PENDING',
+              },
+              select: {
+                id: true,
+                endpointId: true,
+                eventId: true,
+              },
+            });
+
+            // 3. Enqueue all pending deliveries into BullMQ (deduplicated by delivery.id)
+            for (const delivery of pendingDeliveries) {
               await addWebhookJob(delivery.id, {
                 deliveryId: delivery.id,
                 endpointId: delivery.endpointId,
@@ -128,7 +146,7 @@ export async function startBackgroundServices() {
               });
             }
 
-            console.log(`✅ Fan-out complete: Queued ${deliveryRecords.length} BullMQ webhook job(s).`);
+            console.log(`✅ Fan-out complete: Queued ${pendingDeliveries.length} BullMQ webhook job(s).`);
           } else {
             console.log(`⚠️ Kafka Consumer: 0 endpoints subscribed to event [${eventType}] for org [${organizationId}].`);
           }
@@ -149,7 +167,9 @@ export async function startBackgroundServices() {
 
   // BullMQ Worker to dispatch HTTP webhooks
   createWebhookWorker(async (job) => {
+
     const { deliveryId, endpointId, payload, eventType } = job.data;
+
     if (!deliveryId || !endpointId) return;
 
     // Atomically claim delivery if it is in DEAD or FAILED status (Manual Retry flow)

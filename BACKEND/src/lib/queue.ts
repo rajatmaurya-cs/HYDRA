@@ -92,6 +92,7 @@ export async function reEnqueueDeadDelivery(deliveryId: string, organizationId?:
  */
 export async function reEnqueueAllDeadDeliveries(organizationId: string) {
   try {
+    
     const deadDeliveries = await prisma.eventDeliveryWebhook.findMany({
       where: {
         event: {
