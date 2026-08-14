@@ -379,7 +379,9 @@ export async function getOrganizationDeliveryLogs(req: AuthenticatedRequest, res
 
 export async function retrySingleDeadDelivery(req: AuthenticatedRequest, res: Response) {
   try {
+    
     const orgIdParam = req.params.orgId;
+
     const deliveryIdParam = req.params.deliveryId;
 
     const orgId = Array.isArray(orgIdParam) ? orgIdParam[0] : orgIdParam;

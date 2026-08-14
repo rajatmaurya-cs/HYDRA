@@ -152,6 +152,36 @@ export async function startBackgroundServices() {
     const { deliveryId, endpointId, payload, eventType } = job.data;
     if (!deliveryId || !endpointId) return;
 
+    // Atomically claim delivery if it is in DEAD or FAILED status (Manual Retry flow)
+    const currentDelivery = await prisma.eventDeliveryWebhook.findUnique({
+      where: { id: deliveryId },
+      select: { status: true, eventId: true },
+    });
+
+    if (currentDelivery && (currentDelivery.status === 'DEAD' || currentDelivery.status === 'FAILED')) {
+      const claimResult = await prisma.$executeRaw`
+        UPDATE "EventDeliveryWebhook"
+        SET "status" = 'PENDING'::"DeliveryStatus",
+            "errorMessage" = NULL
+        WHERE id = ${deliveryId}
+          AND status IN ('DEAD'::"DeliveryStatus", 'FAILED'::"DeliveryStatus");
+      `;
+
+      if (claimResult === 0) {
+        console.log(`ℹ️ Delivery [${deliveryId}] was already claimed or processed by another worker.`);
+        return;
+      }
+
+      // Decrement parent event failedCount and reset status to PROCESSING
+      await prisma.event.update({
+        where: { id: currentDelivery.eventId },
+        data: {
+          failedCount: { decrement: 1 },
+          status: 'PROCESSING',
+        },
+      });
+    }
+
     const endpoint = await getEndpointMetadata(endpointId);
 
     if (!endpoint) {

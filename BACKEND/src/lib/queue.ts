@@ -67,36 +67,18 @@ export async function reEnqueueDeadDelivery(deliveryId: string, organizationId?:
       throw new Error(`Forbidden: Delivery [${deliveryId}] does not belong to organization [${organizationId}].`);
     }
 
-    // 2. Reset status in PostgreSQL back to PENDING before re-enqueuing
-    await prisma.eventDeliveryWebhook.update({
-      where: { id: deliveryId },
-      data: {
-        status: 'PENDING',
-        errorMessage: null,
-      },
-    });
-
-    // 3. Reset parent Event counters and status back to PROCESSING
-    await prisma.event.update({
-      where: { id: delivery.eventId },
-      data: {
-        failedCount: {
-          decrement: 1,
-        },
-        status: 'PROCESSING',
-      },
-    });
-
-    // 3. Add fresh job to BullMQ queue
+    // 2. Add job to BullMQ queue. DB status remains unchanged (DEAD/FAILED).
+    // The worker will atomically claim and transition the DB status at execution time.
     const job = await addWebhookJob(delivery.id, {
       deliveryId: delivery.id,
       endpointId: delivery.endpointId,
       organizationId: delivery.event.organizationId,
       payload: delivery.event.payload,
       eventType: delivery.event.eventType,
+      isRetry: true,
     });
 
-    console.log(`🔄 Successfully re-enqueued Dead Delivery [${deliveryId}] into BullMQ. Job ID: ${job.id}`);
+    console.log(`🔄 Successfully enqueued Retry Job for Delivery [${deliveryId}] into BullMQ. Job ID: ${job.id}`);
     return job;
 
   } catch (error) {
