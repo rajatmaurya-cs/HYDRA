@@ -120,10 +120,12 @@ export async function reEnqueueAllDeadDeliveries(organizationId: string) {
   }
 }
 
+const WORKER_CONCURRENCY = parseInt(process.env.WORKER_CONCURRENCY || '50', 10);
+
 export function createWebhookWorker(processor: (job: Job) => Promise<void>): Worker {
   const worker = new Worker(WEBHOOK_QUEUE_NAME, processor, {
     connection: queueRedis,
-    concurrency: 250, // Up from 10 to handle massive I/O fetch concurrency
+    concurrency: WORKER_CONCURRENCY, // Balanced with PostgreSQL connection pool (default: 50)
   });
 
   worker.on('completed', (job: Job) => {
