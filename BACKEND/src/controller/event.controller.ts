@@ -110,6 +110,28 @@ export async function createEvent(req: ApiKeyRequest, res: Response) {
     });
 
   } catch (error: any) {
+    const idempotencyKey = req.headers['idempotency-key'] as string | undefined;
+
+    // Handle concurrent idempotency race condition (Prisma P2002: Unique constraint failed on key)
+    if (error?.code === 'P2002' && idempotencyKey) {
+      try {
+        const existingKey = await prisma.idempotencyKey.findUnique({
+          where: { key: idempotencyKey },
+        });
+
+        if (existingKey) {
+          res.status(202).json({
+            message: "Duplicate request. Event already accepted.",
+            eventId: existingKey.eventId,
+            duplicate: true,
+          });
+          return;
+        }
+      } catch (lookupError) {
+        console.error("Error looking up duplicate idempotency key after P2002 race condition:", lookupError);
+      }
+    }
+
     console.error("Create event transactional ingestion error:", error);
     res.status(500).json({ message: "Internal server error." });
   }

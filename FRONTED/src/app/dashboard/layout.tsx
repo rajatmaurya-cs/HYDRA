@@ -10,7 +10,6 @@ import {
   ScrollText,
   XCircle,
   KeyRound,
-  Settings,
   LucideIcon,
 } from "lucide-react";
 
@@ -95,7 +94,6 @@ function DashboardSidebarContent({ children }: { children: React.ReactNode }) {
     { path: "/dashboard/logs", label: "Delivery Logs", Icon: ScrollText },
     { path: "/dashboard/failed", label: "Failed Deliveries", Icon: XCircle },
     { path: "/dashboard/keys", label: "API Credentials", Icon: KeyRound },
-    { path: "/dashboard/settings", label: "Settings", Icon: Settings },
   ];
 
   if (authLoading || (!user && !authLoading)) {
