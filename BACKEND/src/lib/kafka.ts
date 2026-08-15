@@ -52,7 +52,7 @@ export async function ensureTopicExists(topic: string) {
         topics: [
           {
             topic,
-            numPartitions: 3,
+            numPartitions: 50,
             replicationFactor: 1,
           },
         ],

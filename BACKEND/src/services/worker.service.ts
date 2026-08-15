@@ -12,42 +12,50 @@ interface DeliveryRecord {
   eventId: string;
 }
 
-// 1. Atomic SQL Increment for Successful Webhook Delivery
-export async function incrementDeliveredCount(eventId: string): Promise<void> {
+/**
+ * Re-computes and synchronizes an Event's aggregate status, deliveredCount, and failedCount
+ * from its source-of-truth EventDeliveryWebhook records.
+ */
+export async function syncEventState(eventId: string): Promise<void> {
   try {
-    await prisma.$executeRaw`
-      UPDATE "Event"
-      SET 
-        "deliveredCount" = "deliveredCount" + 1,
-        "status" = CASE 
-          WHEN ("deliveredCount" + 1) = "totalDeliveries" THEN 'DELIVERED'::"EventStatus"
-          WHEN ("deliveredCount" + 1 + "failedCount") = "totalDeliveries" THEN 'FAILED'::"EventStatus"
-          ELSE 'PROCESSING'::"EventStatus"
-        END
-      WHERE id = ${eventId};
-    `;
-  } catch (error) {
-    console.error(`Failed to increment deliveredCount for Event [${eventId}]:`, error);
-  }
-}
+    const deliveries = await prisma.eventDeliveryWebhook.findMany({
+      where: { eventId },
+      select: { status: true },
+    });
 
-// 2. Atomic SQL Increment for Failed Webhook Delivery
-export async function incrementFailedCount(eventId: string): Promise<void> {
-  try {
-    await prisma.$executeRaw`
-      UPDATE "Event"
-      SET 
-        "failedCount" = "failedCount" + 1,
-        "status" = CASE 
-          WHEN ("deliveredCount" + "failedCount" + 1) = "totalDeliveries" 
-               AND ("deliveredCount") = 0 THEN 'FAILED'::"EventStatus"
-          WHEN ("deliveredCount" + "failedCount" + 1) = "totalDeliveries" THEN 'FAILED'::"EventStatus"
-          ELSE 'PROCESSING'::"EventStatus"
-        END
-      WHERE id = ${eventId};
-    `;
+    const totalDeliveries = deliveries.length;
+    const deliveredCount = deliveries.filter((d) => d.status === 'DELIVERED').length;
+    const deadCount = deliveries.filter((d) => d.status === 'DEAD').length;
+    const inFlightCount = deliveries.filter(
+      (d) => d.status === 'PENDING' || d.status === 'PROCESSING' || d.status === 'FAILED'
+    ).length;
+
+    let status: 'PENDING' | 'QUEUED' | 'PROCESSING' | 'DELIVERED' | 'PARTIAL_SUCCESS' | 'FAILED' = 'PROCESSING';
+
+    if (totalDeliveries === 0) {
+      status = 'DELIVERED';
+    } else if (inFlightCount > 0) {
+      status = 'PROCESSING';
+    } else if (deliveredCount === totalDeliveries) {
+      status = 'DELIVERED';
+    } else if (deadCount === totalDeliveries) {
+      status = 'FAILED';
+    } else {
+      // Mixed finished state: at least 1 delivered and at least 1 dead
+      status = 'PARTIAL_SUCCESS';
+    }
+
+    await prisma.event.update({
+      where: { id: eventId },
+      data: {
+        totalDeliveries,
+        deliveredCount,
+        failedCount: deadCount,
+        status,
+      },
+    });
   } catch (error) {
-    console.error(`Failed to increment failedCount for Event [${eventId}]:`, error);
+    console.error(`Failed to sync event state for event [${eventId}]:`, error);
   }
 }
 
@@ -120,8 +128,6 @@ export async function startBackgroundServices() {
             `;
 
             // 2. Smart Re-fetch: Retrieve ALL PENDING delivery records for this event + endpoints.
-            // On Kafka consumer retry or rebalance, this reliably picks up any delivery records
-            // that were already created in DB but failed to enqueue into BullMQ before a crash.
             const pendingDeliveries = await prisma.eventDeliveryWebhook.findMany({
               where: {
                 eventId,
@@ -148,7 +154,16 @@ export async function startBackgroundServices() {
 
             console.log(`✅ Fan-out complete: Queued ${pendingDeliveries.length} BullMQ webhook job(s).`);
           } else {
-            console.log(`⚠️ Kafka Consumer: 0 endpoints subscribed to event [${eventType}] for org [${organizationId}].`);
+            console.log(`ℹ️ Kafka Consumer: 0 endpoints subscribed to event [${eventType}] for org [${organizationId}].`);
+            await prisma.event.update({
+              where: { id: eventId },
+              data: {
+                status: 'DELIVERED',
+                totalDeliveries: 0,
+                deliveredCount: 0,
+                failedCount: 0,
+              },
+            });
           }
 
           await consumer.commitOffsets([
@@ -192,14 +207,7 @@ export async function startBackgroundServices() {
         return;
       }
 
-      // Decrement parent event failedCount and reset status to PROCESSING
-      await prisma.event.update({
-        where: { id: currentDelivery.eventId },
-        data: {
-          failedCount: { decrement: 1 },
-          status: 'PROCESSING',
-        },
-      });
+      await syncEventState(currentDelivery.eventId);
     }
 
     const endpoint = await getEndpointMetadata(endpointId);
@@ -272,8 +280,7 @@ export async function startBackgroundServices() {
 
         console.log(`✅ Webhook delivered successfully to ${endpoint.url}. Status: ${response.status}`);
         
-        // Atomic SQL counter increment for success
-        await incrementDeliveredCount(updatedDelivery.eventId);
+        await syncEventState(updatedDelivery.eventId);
 
       } else {
         httpStatusCode = response.status;
@@ -317,8 +324,9 @@ export async function startBackgroundServices() {
           ? `Non-retriable 4xx response (${httpStatusCode})`
           : `exhausted all ${maxAttempts} attempts`;
         console.warn(`☠️ Delivery [${deliveryId}] ${reason}. Marked as DEAD in PostgreSQL.`);
-        await incrementFailedCount(updatedDelivery.eventId);
       }
+
+      await syncEventState(updatedDelivery.eventId);
 
       // Re-throw to trigger BullMQ retry ONLY if it is a retriable failure (5xx or network error) and attempts remain
       if (!isNonRetriable) {
@@ -327,3 +335,4 @@ export async function startBackgroundServices() {
     }
   });
 }
+

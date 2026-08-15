@@ -31,4 +31,6 @@ enum EndpointStatus {
   DISABLED
 
   ARCHIVED
+
+  DELETED
 }

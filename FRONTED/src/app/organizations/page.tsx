@@ -3,6 +3,15 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
+import {
+  Plus,
+  ArrowRight,
+  Copy,
+  Check,
+  AlertTriangle,
+  X,
+  Building,
+} from "lucide-react";
 
 interface Organization {
   id: string;
@@ -31,6 +40,7 @@ export default function OrganizationsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createdApiKey, setCreatedApiKey] = useState("");
   const [createdOrgName, setCreatedOrgName] = useState("");
+  const [copiedKey, setCopiedKey] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -122,6 +132,14 @@ export default function OrganizationsPage() {
     }
   };
 
+  const copyApiKey = () => {
+    if (createdApiKey) {
+      navigator.clipboard.writeText(createdApiKey);
+      setCopiedKey(true);
+      setTimeout(() => setCopiedKey(false), 2000);
+    }
+  };
+
   if (authLoading || (!user && !authLoading)) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-white text-black">
@@ -136,7 +154,8 @@ export default function OrganizationsPage() {
         
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-neutral-200/80 pb-5 mb-8">
           <div>
-            <h1 className="text-2xl font-medium tracking-tight text-neutral-900">
+            <h1 className="text-2xl font-medium tracking-tight text-neutral-900 flex items-center gap-2">
+              <Building className="w-6 h-6 text-neutral-900" />
               Organizations
             </h1>
             <p className="text-neutral-500 text-xs mt-1 font-normal">
@@ -148,10 +167,8 @@ export default function OrganizationsPage() {
               onClick={() => setShowCreateForm(true)}
               className="px-3.5 py-1.5 bg-black hover:bg-neutral-800 text-white rounded-md text-xs font-normal transition-all active:scale-95 cursor-pointer flex items-center gap-1.5 self-start sm:self-auto"
             >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              New Organization
+              <Plus className="w-3.5 h-3.5" />
+              <span>New Organization</span>
             </button>
           )}
         </div>
@@ -165,9 +182,7 @@ export default function OrganizationsPage() {
               }}
               className="absolute top-4 right-4 text-neutral-400 hover:text-black transition-colors cursor-pointer"
             >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <X className="w-4 h-4" />
             </button>
 
             <h2 className="text-base font-medium text-neutral-900 mb-0.5">Create New Organization</h2>
@@ -274,9 +289,10 @@ export default function OrganizationsPage() {
             </p>
             <button
               onClick={() => setShowCreateForm(true)}
-              className="px-4 py-2 bg-black hover:bg-neutral-800 text-white rounded-md text-xs font-normal transition-all cursor-pointer"
+              className="px-4 py-2 bg-black hover:bg-neutral-800 text-white rounded-md text-xs font-normal transition-all cursor-pointer inline-flex items-center gap-1.5"
             >
-              Create First Organization
+              <Plus className="w-3.5 h-3.5" />
+              <span>Create First Organization</span>
             </button>
           </div>
         ) : (
@@ -312,7 +328,8 @@ export default function OrganizationsPage() {
                       onClick={() => router.push(`/organizations/${org.id}`)}
                       className="px-3 py-1 bg-black hover:bg-neutral-800 text-white rounded text-xs font-normal cursor-pointer transition-all active:scale-95 flex items-center gap-1"
                     >
-                      Manage →
+                      <span>Manage</span>
+                      <ArrowRight className="w-3 h-3" />
                     </button>
                     <button
                       onClick={() => router.push(`/dashboard?orgId=${org.id}`)}
@@ -334,9 +351,7 @@ export default function OrganizationsPage() {
                 onClick={() => setCreatedApiKey("")}
                 className="absolute top-4 right-4 text-neutral-400 hover:text-black transition-colors cursor-pointer"
               >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <X className="w-4 h-4" />
               </button>
 
               <h3 className="text-base font-medium text-neutral-900 mb-1">Organization Created!</h3>
@@ -347,15 +362,17 @@ export default function OrganizationsPage() {
               <div className="p-3 bg-neutral-50 border border-neutral-200 rounded-md flex items-center justify-between gap-2 mb-4">
                 <code className="text-xs font-mono text-neutral-900 select-all break-all font-normal">{createdApiKey}</code>
                 <button
-                  onClick={() => navigator.clipboard.writeText(createdApiKey)}
-                  className="px-2.5 py-1 bg-black hover:bg-neutral-800 text-white rounded text-xs font-normal cursor-pointer shrink-0"
+                  onClick={copyApiKey}
+                  className="px-2.5 py-1 bg-black hover:bg-neutral-800 text-white rounded text-xs font-normal cursor-pointer shrink-0 flex items-center gap-1"
                 >
-                  Copy
+                  {copiedKey ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                  <span>{copiedKey ? "Copied" : "Copy"}</span>
                 </button>
               </div>
 
-              <p className="text-[11px] text-neutral-600 bg-neutral-50 border border-neutral-200 p-2.5 rounded-md mb-4 font-normal">
-                ⚠️ Store this API Key safely. Use it in <code>Authorization: Bearer</code> headers.
+              <p className="text-[11px] text-neutral-600 bg-neutral-50 border border-neutral-200 p-2.5 rounded-md mb-4 font-normal flex items-center gap-1.5">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                <span>Store this API Key safely. Use it in <code>Authorization: Bearer</code> headers.</span>
               </p>
 
               <button
@@ -372,3 +389,4 @@ export default function OrganizationsPage() {
     </div>
   );
 }
+

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import { Package, RefreshCw, X, Code2 } from "lucide-react";
 
 interface WebhookDelivery {
   id: string;
@@ -29,6 +30,7 @@ function EventsPageContent() {
 
   const [events, setEvents] = useState<RawEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedPayload, setSelectedPayload] = useState<any | null>(null);
 
   useEffect(() => {
@@ -51,7 +53,14 @@ function EventsPageContent() {
       console.error("Failed to fetch raw events:", error);
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
+  };
+
+  const handleManualRefresh = () => {
+    if (!orgId) return;
+    setIsRefreshing(true);
+    fetchEvents(orgId);
   };
 
   return (
@@ -59,18 +68,20 @@ function EventsPageContent() {
       {/* Header */}
       <div className="flex items-center justify-between border-b border-neutral-200 pb-4 mb-6">
         <div>
-          <h1 className="text-2xl font-medium tracking-tight text-neutral-900">
-            📦 Ingested Raw Events
+          <h1 className="text-2xl font-medium tracking-tight text-neutral-900 flex items-center gap-2">
+            <Package className="w-6 h-6 text-neutral-900" />
+            Ingested Raw Events
           </h1>
           <p className="text-neutral-500 text-xs mt-0.5 font-normal">
             Raw event log and destination endpoint delivery status
           </p>
         </div>
         <button
-          onClick={() => orgId && fetchEvents(orgId)}
-          className="px-3 py-1.5 bg-neutral-100 hover:bg-neutral-200 border border-neutral-200 text-neutral-800 rounded-md text-xs font-normal transition-all cursor-pointer flex items-center gap-1"
+          onClick={handleManualRefresh}
+          className="px-3 py-1.5 bg-neutral-100 hover:bg-neutral-200 border border-neutral-200 text-neutral-800 rounded-md text-xs font-normal transition-all cursor-pointer flex items-center gap-1.5"
         >
-          🔄 Refresh
+          <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
+          <span>Refresh</span>
         </button>
       </div>
 
@@ -121,12 +132,14 @@ function EventsPageContent() {
                         className={`text-[9px] font-semibold px-2 py-0.5 rounded border uppercase ${
                           ev.status === "DELIVERED"
                             ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            : ev.status === "PARTIAL_SUCCESS"
+                            ? "bg-amber-50 text-amber-800 border-amber-300"
                             : ev.status === "FAILED" || ev.status === "DEAD"
                             ? "bg-rose-50 text-rose-700 border-rose-200"
-                            : "bg-amber-50 text-amber-700 border-amber-200"
+                            : "bg-blue-50 text-blue-700 border-blue-200"
                         }`}
                       >
-                        {ev.status}
+                        {ev.status === "PARTIAL_SUCCESS" ? "PARTIAL SUCCESS" : ev.status}
                       </span>
                     </td>
 
@@ -167,9 +180,10 @@ function EventsPageContent() {
                     <td className="py-3.5 px-4 text-right">
                       <button
                         onClick={() => setSelectedPayload(ev.payload)}
-                        className="px-2.5 py-1 bg-black hover:bg-neutral-800 text-white rounded text-[11px] font-normal cursor-pointer transition-all active:scale-95"
+                        className="px-2.5 py-1 bg-black hover:bg-neutral-800 text-white rounded text-[11px] font-normal cursor-pointer transition-all active:scale-95 inline-flex items-center gap-1"
                       >
-                        View JSON
+                        <Code2 className="w-3 h-3" />
+                        <span>JSON</span>
                       </button>
                     </td>
                   </tr>
@@ -188,9 +202,12 @@ function EventsPageContent() {
               onClick={() => setSelectedPayload(null)}
               className="absolute top-4 right-4 text-neutral-400 hover:text-black transition-colors cursor-pointer"
             >
-              ✕
+              <X className="w-4 h-4" />
             </button>
-            <h3 className="text-base font-medium text-neutral-900 mb-3">Event Payload Data</h3>
+            <h3 className="text-base font-medium text-neutral-900 mb-3 flex items-center gap-1.5">
+              <Code2 className="w-4 h-4 text-neutral-900" />
+              Event Payload Data
+            </h3>
             <pre className="p-4 bg-neutral-900 text-emerald-400 rounded-lg text-xs font-mono overflow-x-auto max-h-96">
               {JSON.stringify(selectedPayload, null, 2)}
             </pre>

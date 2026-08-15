@@ -3,6 +3,15 @@
 import React, { useState, useEffect, use } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
+import {
+  ArrowLeft,
+  LayoutDashboard,
+  KeyRound,
+  Copy,
+  Check,
+  RotateCcw,
+  Trash2,
+} from "lucide-react";
 
 interface Organization {
   id: string;
@@ -28,6 +37,7 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
   const [org, setOrg] = useState<Organization | null>(null);
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
+  const [copiedKeyId, setCopiedKeyId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -106,6 +116,12 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
     }
   };
 
+  const copyKeyPrefix = (prefix: string, keyId: string) => {
+    navigator.clipboard.writeText(prefix);
+    setCopiedKeyId(keyId);
+    setTimeout(() => setCopiedKeyId(null), 2000);
+  };
+
   if (authLoading || loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-white text-black">
@@ -125,10 +141,8 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
           onClick={() => router.push("/organizations")}
           className="flex items-center gap-1.5 text-neutral-500 hover:text-neutral-900 transition-colors mb-5 text-xs cursor-pointer font-normal"
         >
-          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
-          Back to Organizations
+          <ArrowLeft className="w-3.5 h-3.5" />
+          <span>Back to Organizations</span>
         </button>
 
         {/* Organization Header */}
@@ -142,15 +156,18 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
             <h1 className="text-3xl font-medium tracking-tight text-neutral-900 mt-1">
               {org.name}
             </h1>
-            <p className="text-neutral-500 text-xs mt-1 font-normal">
-              API credentials for this organization.
-            </p>
+            {org.description && (
+              <p className="text-neutral-500 text-xs mt-1 font-normal">
+                {org.description}
+              </p>
+            )}
           </div>
           <button
             onClick={() => router.push(`/dashboard?orgId=${org.id}`)}
             className="px-3.5 py-1.5 bg-black hover:bg-neutral-800 text-white rounded-md text-xs font-normal transition-all active:scale-95 cursor-pointer flex items-center gap-1.5 self-start sm:self-auto"
           >
-            Open Dashboard →
+            <LayoutDashboard className="w-3.5 h-3.5" />
+            <span>Open Dashboard</span>
           </button>
         </div>
 
@@ -158,14 +175,18 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
         <div className="p-6 bg-neutral-50/70 border border-neutral-200 rounded-xl">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-base font-medium text-neutral-900">API Credentials</h2>
+              <h2 className="text-base font-medium text-neutral-900 flex items-center gap-2">
+                <KeyRound className="w-4 h-4 text-neutral-900" />
+                API Credentials
+              </h2>
               <p className="text-neutral-500 text-xs mt-0.5 font-normal">Use these API keys to send events to this organization.</p>
             </div>
             <button
               onClick={() => router.push(`/dashboard/keys?orgId=${org.id}`)}
-              className="px-3 py-1.5 bg-white hover:bg-neutral-100 border border-neutral-200 rounded-md text-xs font-normal text-neutral-800 transition-all cursor-pointer shadow-xs"
+              className="px-3 py-1.5 bg-white hover:bg-neutral-100 border border-neutral-200 rounded-md text-xs font-normal text-neutral-800 transition-all cursor-pointer shadow-xs flex items-center gap-1.5"
             >
-              Manage in Console →
+              <KeyRound className="w-3.5 h-3.5" />
+              <span>Manage in Console</span>
             </button>
           </div>
 
@@ -208,25 +229,28 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
                       )}
                       <div className="flex items-center gap-1.5">
                         <button
-                          onClick={() => navigator.clipboard.writeText(key.prefix)}
-                          className="px-2.5 py-1.5 bg-black hover:bg-neutral-800 text-white rounded text-xs font-normal cursor-pointer active:scale-95 transition-all"
+                          onClick={() => copyKeyPrefix(key.prefix, key.id)}
+                          className="px-2.5 py-1.5 bg-black hover:bg-neutral-800 text-white rounded text-xs font-normal cursor-pointer active:scale-95 transition-all flex items-center gap-1"
                         >
-                          Copy
+                          {copiedKeyId === key.id ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                          <span>{copiedKeyId === key.id ? "Copied" : "Copy"}</span>
                         </button>
                         {!key.revoked && (
                           <>
                             <button
                               onClick={() => handleRotateKey(key.id)}
-                              className="px-2.5 py-1.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 border border-neutral-200 rounded text-xs font-normal cursor-pointer active:scale-95 transition-all"
+                              className="px-2.5 py-1.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 border border-neutral-200 rounded text-xs font-normal cursor-pointer active:scale-95 transition-all flex items-center gap-1"
                               title="Rotate Key (Revokes current key & issues new one)"
                             >
-                              Rotate
+                              <RotateCcw className="w-3 h-3" />
+                              <span>Rotate</span>
                             </button>
                             <button
                               onClick={() => handleRevokeKey(key.id)}
-                              className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded text-xs font-normal cursor-pointer active:scale-95 transition-all"
+                              className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded text-xs font-normal cursor-pointer active:scale-95 transition-all flex items-center gap-1"
                             >
-                              Revoke
+                              <Trash2 className="w-3 h-3" />
+                              <span>Revoke</span>
                             </button>
                           </>
                         )}
@@ -243,3 +267,4 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
     </div>
   );
 }
+

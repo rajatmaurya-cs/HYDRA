@@ -42,6 +42,8 @@ enum EventStatus {
 
   DELIVERED
 
+  PARTIAL_SUCCESS
+
   FAILED
 
   DEAD

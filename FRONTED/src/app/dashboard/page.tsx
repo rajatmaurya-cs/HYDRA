@@ -10,6 +10,7 @@ import {
   TrendingUp,
   Clock,
   Zap,
+  ArrowRight,
 } from "lucide-react";
 
 interface FailedJob {
@@ -186,15 +187,17 @@ function OverviewPageContent() {
           </div>
           <button
             onClick={() => router.push(`/dashboard/failed?orgId=${orgId}`)}
-            className="text-xs text-neutral-500 hover:text-black font-normal cursor-pointer"
+            className="text-xs text-neutral-500 hover:text-black font-normal cursor-pointer flex items-center gap-1"
           >
-            View All Failed →
+            <span>View All Failed</span>
+            <ArrowRight className="w-3 h-3" />
           </button>
         </div>
 
         {metrics.recentFailedJobs.length === 0 ? (
           <div className="py-8 text-center text-xs text-neutral-400 font-normal">
-            🎉 No failed deliveries found for this organization!
+            <CheckCircle2 className="w-6 h-6 text-emerald-500 mx-auto mb-1.5" />
+            No failed deliveries found for this organization!
           </div>
         ) : (
           <div className="overflow-x-auto">

@@ -38,7 +38,7 @@ export async function createEvent(req: ApiKeyRequest, res: Response) {
       await appRedis.expire(rateLimitKey, 10);
     }
     
-    if (requestsCount > 100) {
+    if (requestsCount > 1000) {
       res.status(429).json({ message: "Too many requests. Rate limit exceeded." });
       return;
     }

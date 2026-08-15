@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import prisma from '../lib/prisma';
 import { AuthenticatedRequest } from '../middleware/auth.middleware';
 import { invalidateSubscriptionCache, invalidateEndpointMetadataCache } from '../lib/endpointCache';
+import { syncEventState } from '../services/worker.service';
 
 export async function createEndpoint(req: AuthenticatedRequest, res: Response) {
   try {
@@ -90,7 +91,8 @@ export async function getEndpoints(req: AuthenticatedRequest, res: Response) {
     }
 
     const endpoints = await prisma.endpoint.findMany({
-      where: { organizationId }
+      where: { organizationId },
+      orderBy: { createdAt: 'desc' },
     });
 
     res.status(200).json({ endpoints });
@@ -245,15 +247,21 @@ export async function deleteEndpoint(req: AuthenticatedRequest, res: Response) {
       return;
     }
 
-    await prisma.endpoint.delete({
-      where: { id: endpointId }
+    // Soft delete: mark endpoint status as DELETED and isPaused as true.
+    // Preserves all EventDeliveryWebhook records, parent Event states, and historical metrics.
+    const updated = await prisma.endpoint.update({
+      where: { id: endpointId },
+      data: {
+        status: 'DELETED',
+        isPaused: true,
+      }
     });
 
-    // Invalidate both Redis caches
+    // Invalidate Redis caches so Kafka fan-out immediately stops routing new events here
     await invalidateSubscriptionCache(existing.organizationId);
     await invalidateEndpointMetadataCache(endpointId);
 
-    res.status(200).json({ message: "Endpoint deleted successfully." });
+    res.status(200).json({ message: "Endpoint marked as deleted successfully.", endpoint: updated });
   } catch (error: any) {
     console.error("Delete endpoint error:", error);
     res.status(500).json({ message: "Internal server error." });

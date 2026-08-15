@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import { KeyRound, Plus, Copy, RotateCcw, Trash2, X, Check } from "lucide-react";
 
 interface ApiKey {
   id: string;
@@ -18,6 +19,7 @@ function ApiKeysPageContent() {
 
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
+  const [copiedKeyId, setCopiedKeyId] = useState<string | null>(null);
 
   // Modal State
   const [showKeyModal, setShowKeyModal] = useState(false);
@@ -119,13 +121,20 @@ function ApiKeysPageContent() {
     }
   };
 
+  const copyToClipboard = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedKeyId(id);
+    setTimeout(() => setCopiedKeyId(null), 2000);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-neutral-200 pb-4 mb-6">
         <div>
-          <h1 className="text-2xl font-medium tracking-tight text-neutral-900">
-            🔑 API Credentials
+          <h1 className="text-2xl font-medium tracking-tight text-neutral-900 flex items-center gap-2">
+            <KeyRound className="w-6 h-6 text-neutral-900" />
+            API Credentials
           </h1>
           <p className="text-neutral-500 text-xs mt-0.5 font-normal">
             Bearer authentication tokens for request ingestion
@@ -133,9 +142,10 @@ function ApiKeysPageContent() {
         </div>
         <button
           onClick={() => setShowKeyModal(true)}
-          className="px-3.5 py-1.5 bg-black hover:bg-neutral-800 text-white text-xs rounded-md transition-all cursor-pointer font-normal"
+          className="px-3.5 py-1.5 bg-black hover:bg-neutral-800 text-white text-xs rounded-md transition-all cursor-pointer font-normal flex items-center gap-1.5"
         >
-          + Generate Key
+          <Plus className="w-3.5 h-3.5" />
+          Generate Key
         </button>
       </div>
 
@@ -148,8 +158,9 @@ function ApiKeysPageContent() {
           <p className="text-xs text-neutral-500 mb-4 font-normal">No active API keys found.</p>
           <button
             onClick={() => setShowKeyModal(true)}
-            className="px-4 py-2 bg-black text-white text-xs font-normal rounded-md cursor-pointer"
+            className="px-4 py-2 bg-black text-white text-xs font-normal rounded-md cursor-pointer inline-flex items-center gap-1.5"
           >
+            <Plus className="w-3.5 h-3.5" />
             Generate Key
           </button>
         </div>
@@ -185,24 +196,37 @@ function ApiKeysPageContent() {
                   )}
                   <div className="flex items-center gap-1.5">
                     <button
-                      onClick={() => navigator.clipboard.writeText(key.prefix)}
-                      className="px-2.5 py-1.5 bg-black hover:bg-neutral-800 text-white rounded text-xs font-normal cursor-pointer"
+                      onClick={() => copyToClipboard(key.prefix, key.id)}
+                      className="px-2.5 py-1.5 bg-black hover:bg-neutral-800 text-white rounded text-xs font-normal cursor-pointer flex items-center gap-1"
                     >
-                      Copy
+                      {copiedKeyId === key.id ? (
+                        <>
+                          <Check className="w-3 h-3 text-emerald-400" />
+                          <span>Copied</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3 h-3" />
+                          <span>Copy</span>
+                        </>
+                      )}
                     </button>
                     {!key.revoked && (
                       <>
                         <button
                           onClick={() => handleRotateKey(key.id)}
-                          className="px-2.5 py-1.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 border border-neutral-200 rounded text-xs font-normal cursor-pointer"
+                          className="px-2.5 py-1.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 border border-neutral-200 rounded text-xs font-normal cursor-pointer flex items-center gap-1"
+                          title="Rotate Key (Revokes current key & issues new one)"
                         >
-                          Rotate
+                          <RotateCcw className="w-3 h-3" />
+                          <span>Rotate</span>
                         </button>
                         <button
                           onClick={() => handleRevokeKey(key.id)}
-                          className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded text-xs font-normal cursor-pointer"
+                          className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded text-xs font-normal cursor-pointer flex items-center gap-1"
                         >
-                          Revoke
+                          <Trash2 className="w-3 h-3" />
+                          <span>Revoke</span>
                         </button>
                       </>
                     )}
@@ -218,8 +242,13 @@ function ApiKeysPageContent() {
       {showKeyModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-white border border-neutral-200 rounded-xl w-full max-w-md p-6 relative shadow-xl text-xs font-normal">
-            <button onClick={() => setShowKeyModal(false)} className="absolute top-4 right-4 text-neutral-400 hover:text-black">✕</button>
-            <h3 className="text-base font-medium text-neutral-900 mb-4">Generate API Key</h3>
+            <button onClick={() => setShowKeyModal(false)} className="absolute top-4 right-4 text-neutral-400 hover:text-black">
+              <X className="w-4 h-4" />
+            </button>
+            <h3 className="text-base font-medium text-neutral-900 mb-4 flex items-center gap-2">
+              <KeyRound className="w-4 h-4 text-neutral-900" />
+              Generate API Key
+            </h3>
             {generatedKey ? (
               <div className="space-y-4">
                 <code className="p-3 bg-neutral-50 border border-neutral-200 rounded-md block select-all break-all">{generatedKey}</code>
