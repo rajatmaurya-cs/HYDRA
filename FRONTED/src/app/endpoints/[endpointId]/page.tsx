@@ -166,13 +166,13 @@ export default function EndpointDetailPage({ params }: { params: Promise<{ endpo
     <div className="min-h-screen bg-white text-neutral-900 pt-24 pb-12 px-6 md:px-12 font-sans">
       <div className="max-w-4xl mx-auto">
         
-        {/* Back Link to Organization */}
+        {/* Back Link to Dashboard Endpoints */}
         <button
-          onClick={() => router.push(`/organizations/${endpoint.organization.id}`)}
+          onClick={() => router.push(`/dashboard/endpoints?orgId=${endpoint.organization.id}`)}
           className="flex items-center gap-1.5 text-neutral-500 hover:text-neutral-900 transition-colors mb-5 text-xs cursor-pointer font-normal"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Back to {endpoint.organization.name}</span>
+          <span>Back to Webhook Endpoints</span>
         </button>
 
         {/* Action Notifications */}
