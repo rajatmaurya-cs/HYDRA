@@ -38,7 +38,10 @@ export async function processOutboxEvents() {
     const pendingOutboxEntries = await prisma.$transaction(async (tx) => {
       const lockedRows = await tx.$queryRaw<Array<{ id: string }>>`
         SELECT id FROM "Outbox"
-        WHERE status IN ('PENDING', 'FAILED')
+        WHERE (
+          status IN ('PENDING', 'FAILED')
+          OR (status = 'PROCESSING' AND "updatedAt" < NOW() - INTERVAL '2 minutes')
+        )
           AND "retryCount" < ${MAX_OUTBOX_RETRIES}
           AND ("nextAttemptAt" IS NULL OR "nextAttemptAt" <= NOW())
         ORDER BY "createdAt" ASC
@@ -52,7 +55,10 @@ export async function processOutboxEvents() {
 
       await tx.outbox.updateMany({
         where: { id: { in: ids } },
-        data: { status: 'PROCESSING' },
+        data: {
+          status: 'PROCESSING',
+          updatedAt: new Date(),
+        },
       });
 
       const entries = await tx.outbox.findMany({
