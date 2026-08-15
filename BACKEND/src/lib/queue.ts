@@ -123,7 +123,7 @@ export async function reEnqueueAllDeadDeliveries(organizationId: string) {
 export function createWebhookWorker(processor: (job: Job) => Promise<void>): Worker {
   const worker = new Worker(WEBHOOK_QUEUE_NAME, processor, {
     connection: queueRedis,
-    concurrency: 10,
+    concurrency: 250, // Up from 10 to handle massive I/O fetch concurrency
   });
 
   worker.on('completed', (job: Job) => {

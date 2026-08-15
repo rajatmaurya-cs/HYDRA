@@ -1,8 +1,8 @@
 import prisma from '../lib/prisma';
 import { produceMessage } from '../lib/kafka';
 
-const BATCH_SIZE = 50;
-const POLL_INTERVAL_MS = 3000;
+const BATCH_SIZE = 1000;
+const POLL_INTERVAL_MS = 250;
 const MAX_OUTBOX_RETRIES = 5;
 
 let isRelayRunning = false;
@@ -68,38 +68,73 @@ export async function processOutboxEvents() {
       return;
     }
 
-    for (const entry of pendingOutboxEntries) {
-      try {
-        const ingestPayload = {
-          eventId: entry.event.id,
-          organizationId: entry.event.organizationId,
-          eventType: entry.event.eventType,
-          payload: entry.event.payload,
-          idempotencyKey: entry.event.idempotencyKey || undefined,
-          createdAt: entry.event.createdAt.toISOString(),
-        };
+    const CHUNK_SIZE = 50;
+    for (let i = 0; i < pendingOutboxEntries.length; i += CHUNK_SIZE) {
+      const chunk = pendingOutboxEntries.slice(i, i + CHUNK_SIZE);
 
-        await produceMessage('webhook-events', ingestPayload, entry.event.idempotencyKey || entry.event.id);
+      const results = await Promise.allSettled(
+        chunk.map(async (entry) => {
+          const ingestPayload = {
+            eventId: entry.event.id,
+            organizationId: entry.event.organizationId,
+            eventType: entry.event.eventType,
+            payload: entry.event.payload,
+            idempotencyKey: entry.event.idempotencyKey || undefined,
+            createdAt: entry.event.createdAt.toISOString(),
+          };
+
+          await produceMessage(
+            'webhook-events',
+            ingestPayload,
+            entry.event.idempotencyKey || entry.event.id
+          );
+
+          return entry;
+        })
+      );
+
+      const successfulEntries: OutboxWithEvent[] = [];
+      const failedEntries: { entry: OutboxWithEvent; error: any }[] = [];
+
+      results.forEach((result, idx) => {
+        if (result.status === 'fulfilled') {
+          successfulEntries.push(result.value);
+        } else {
+          failedEntries.push({
+            entry: chunk[idx],
+            error: result.reason,
+          });
+        }
+      });
+
+      // 🟢 Bulk update for successful sends in the chunk
+      if (successfulEntries.length > 0) {
+        const outboxIds = successfulEntries.map((e) => e.id);
+        const eventIds = successfulEntries.map((e) => e.event.id);
 
         await prisma.$transaction([
-          prisma.outbox.update({
-            where: { id: entry.id },
+          prisma.outbox.updateMany({
+            where: { id: { in: outboxIds } },
             data: {
               status: 'SENT',
               publishedAt: new Date(),
             },
           }),
-          prisma.event.update({
-            where: { id: entry.event.id },
+          prisma.event.updateMany({
+            where: { id: { in: eventIds } },
             data: {
               status: 'QUEUED',
             },
           }),
         ]);
 
-        console.log(`📤 Outbox Relay: Published event [${entry.eventId}] to Kafka successfully.`);
+        console.log(
+          `📤 Outbox Relay: Parallel published ${successfulEntries.length} event(s) to Kafka successfully.`
+        );
+      }
 
-      } catch (error: any) {
+      // 🔴 Targeted handling for failed sends in the chunk
+      for (const { entry, error } of failedEntries) {
         const nextRetryCount = entry.retryCount + 1;
         const isMaxRetriesExhausted = nextRetryCount >= MAX_OUTBOX_RETRIES;
 
@@ -121,7 +156,7 @@ export async function processOutboxEvents() {
 
           console.error(
             `❌ Outbox Relay: Failed to publish event [${entry.eventId}] (Attempt ${nextRetryCount}/${MAX_OUTBOX_RETRIES}). Retrying at ${nextAttemptAt.toISOString()}:`,
-            error.message
+            error?.message || error
           );
 
           await prisma.outbox.update({
