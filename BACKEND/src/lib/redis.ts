@@ -21,3 +21,13 @@ appRedis.on('connect', () => {
 appRedis.on('error', (err) => {
   console.error('❌ App Redis connection error:', err);
 });
+
+export async function disconnectRedis(): Promise<void> {
+  try {
+    await Promise.all([queueRedis.quit(), appRedis.quit()]);
+    console.log('✅ Redis connections closed successfully.');
+  } catch (error) {
+    console.error('❌ Failed to close Redis connections:', error);
+  }
+}
+

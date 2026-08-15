@@ -69,3 +69,17 @@ export async function ensureTopicExists(topic: string) {
 export function createConsumer(groupId: string): Consumer {
   return kafka.consumer({ groupId });
 }
+
+export async function disconnectProducer(): Promise<void> {
+  if (producer) {
+    try {
+      await producer.disconnect();
+      console.log('✅ Kafka Producer disconnected.');
+    } catch (error) {
+      console.error('❌ Failed to disconnect Kafka Producer:', error);
+    } finally {
+      producer = null;
+    }
+  }
+}
+

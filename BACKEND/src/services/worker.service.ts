@@ -1,10 +1,15 @@
 import crypto from 'crypto';
 import { Prisma } from '@prisma/client';
 import prisma from '../lib/prisma';
-import { createConsumer, ensureTopicExists } from '../lib/kafka';
+import { createConsumer, ensureTopicExists, disconnectProducer } from '../lib/kafka';
 import { addWebhookJob, createWebhookWorker } from '../lib/queue';
+import { Consumer } from 'kafkajs';
+import { Worker } from 'bullmq';
 import { canRequest, recordFailure, recordSuccess } from '../lib/circuitBreaker';
 import { getSubscribedEndpoints, getEndpointMetadata } from '../lib/endpointCache';
+
+let activeConsumer: Consumer | null = null;
+let activeWorker: Worker | null = null;
 
 interface DeliveryRecord {
   id: string;
@@ -65,16 +70,16 @@ export async function startBackgroundServices() {
 
   await ensureTopicExists('webhook-events');
 
-  const consumer = createConsumer('hydra-delivery-group');
+  activeConsumer = createConsumer('hydra-delivery-group');
 
   try {
-    await consumer.connect();
+    await activeConsumer.connect();
     
-    await consumer.subscribe({ topic: 'webhook-events', fromBeginning: true });
+    await activeConsumer.subscribe({ topic: 'webhook-events', fromBeginning: true });
     
     console.log('✅ Kafka Consumer connected and subscribed to [webhook-events].');
 
-    await consumer.run({
+    await activeConsumer.run({
       autoCommit: false,
       eachMessage: async ({ topic, partition, message }) => {
         if (!message.value) return;
@@ -166,9 +171,11 @@ export async function startBackgroundServices() {
             });
           }
 
-          await consumer.commitOffsets([
-            { topic, partition, offset: (BigInt(message.offset) + 1n).toString() },
-          ]);
+          if (activeConsumer) {
+            await activeConsumer.commitOffsets([
+              { topic, partition, offset: (BigInt(message.offset) + 1n).toString() },
+            ]);
+          }
 
         } catch (parseError) {
           console.error('❌ Failed to process Kafka message:', parseError);
@@ -181,7 +188,7 @@ export async function startBackgroundServices() {
   }
 
   // BullMQ Worker to dispatch HTTP webhooks
-  createWebhookWorker(async (job) => {
+  activeWorker = createWebhookWorker(async (job) => {
 
     const { deliveryId, endpointId, payload, eventType } = job.data;
 
@@ -335,4 +342,35 @@ export async function startBackgroundServices() {
     }
   });
 }
+
+export async function stopBackgroundServices(): Promise<void> {
+  console.log('🛑 Stopping background webhook worker services...');
+
+  if (activeWorker) {
+    console.log('⏳ Closing BullMQ worker...');
+    try {
+      await activeWorker.close();
+      console.log('✅ BullMQ worker closed successfully.');
+    } catch (err) {
+      console.error('❌ Error closing BullMQ worker:', err);
+    } finally {
+      activeWorker = null;
+    }
+  }
+
+  if (activeConsumer) {
+    console.log('⏳ Disconnecting Kafka consumer...');
+    try {
+      await activeConsumer.disconnect();
+      console.log('✅ Kafka consumer disconnected successfully.');
+    } catch (err) {
+      console.error('❌ Error disconnecting Kafka consumer:', err);
+    } finally {
+      activeConsumer = null;
+    }
+  }
+
+  await disconnectProducer();
+}
+
 

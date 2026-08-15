@@ -191,11 +191,32 @@ export async function replayDeadOutboxEvents(eventId?: string) {
   return updated.count;
 }
 
+let relayIntervalId: NodeJS.Timeout | null = null;
+
 export function startOutboxRelay() {
   console.log('🚀 Starting Transactional Outbox Relay Service...');
-  setInterval(() => {
+  if (relayIntervalId) return;
+
+  relayIntervalId = setInterval(() => {
     processOutboxEvents().catch((err) => {
       console.error('❌ Unhandled error in outbox relay:', err);
     });
   }, POLL_INTERVAL_MS);
 }
+
+export async function stopOutboxRelay(): Promise<void> {
+  if (relayIntervalId) {
+    clearInterval(relayIntervalId);
+    relayIntervalId = null;
+    console.log('🛑 Outbox Relay polling interval stopped.');
+  }
+
+  // Wait for any active processOutboxEvents loop to finish execution (max 5 seconds timeout)
+  let waitCount = 0;
+  while (isRelayRunning && waitCount < 20) {
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    waitCount++;
+  }
+  console.log('✅ Outbox Relay service shutdown complete.');
+}
+
