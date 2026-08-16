@@ -61,16 +61,10 @@ export async function userLogin(req: Request, res: Response) {
   try {
     const { email, password } = req.body;
 
-    console.log(`Request Reached the Backend Email ${email} & Password: ${password}`)
-
-    console.log("✅ 1 ")
-
     if (!email || !password) {
       res.status(400).json({ message: "Email and password are required." });
       return;
     }
-
-    console.log("✅ 2 ")
 
     const normalizedEmail = email.toLowerCase().trim();
 
@@ -78,21 +72,15 @@ export async function userLogin(req: Request, res: Response) {
       where: { email: normalizedEmail }
     });
 
-    console.log("✅ 3 ")
-
     if (!user) {
       res.status(401).json({ message: "Invalid email or password." });
       return;
     }
 
-    console.log("✅ 4 ")
-
     if (!user.passwordHash) {
       res.status(400).json({ message: "Account requires social login or password is not set." });
       return;
     }
-
-    console.log("✅ 5 ")
 
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
 
@@ -101,13 +89,8 @@ export async function userLogin(req: Request, res: Response) {
       return;
     }
 
-    console.log("✅ 6 ")
-
     const accessToken = generateAccessToken(user.id);
     const refreshToken = generateRefreshToken(user.id);
-
-
-    console.log("✅ 7 ")
 
     await prisma.refreshToken.create({
       data: {
@@ -117,21 +100,19 @@ export async function userLogin(req: Request, res: Response) {
       }
     });
 
-    console.log("✅ 8 ")
-
     const isProduction = process.env.NODE_ENV === 'production';
 
     res.cookie('accessToken', accessToken, {
       httpOnly: true,
       secure: isProduction,
-      sameSite: 'none',
+      sameSite: isProduction ? 'none' : 'lax',
       maxAge: 15 * 60 * 1000,
     });
 
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
       secure: isProduction,
-      sameSite: 'none',
+      sameSite: isProduction ? 'none' : 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 

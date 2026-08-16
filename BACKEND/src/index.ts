@@ -13,19 +13,9 @@ const allowedOrigins = [
   process.env.FRONTED_URL,
 ].filter(Boolean) as string[];
 
-console.log("🔒 Configured CORS Allowed Origins:", allowedOrigins);
-
 app.use(
   cors({
-    origin: (origin, callback) => {
-      console.log(`📡 Incoming Request Origin: [${origin || "No Origin"}]`);
-      if (!origin || allowedOrigins.includes(origin)) {
-        console.log(`✅ Origin [${origin}] MATCHED allowedOrigins.`);
-        return callback(null, true);
-      }
-      console.error(`❌ CORS BLOCKED: Origin [${origin}] NOT found in allowedOrigins:`, allowedOrigins);
-      return callback(new Error(`CORS blocked: Origin [${origin}] is not allowed.`));
-    },
+    origin: allowedOrigins,
     credentials: true,
   })
 );
