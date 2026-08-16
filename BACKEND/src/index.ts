@@ -6,19 +6,25 @@ import cookieParser from "cookie-parser";
 
 const app = express();
 
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://localhost:4000",
+  process.env.FRONTEND_URL,
+  process.env.FRONTED_URL,
+].filter(Boolean) as string[];
+
+console.log("🔒 Configured CORS Allowed Origins:", allowedOrigins);
+
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin) return callback(null, true);
-      if (
-        origin.startsWith("http://localhost:") ||
-        origin.endsWith(".vercel.app") ||
-        origin === process.env.FRONTEND_URL ||
-        origin === process.env.FRONTED_URL
-      ) {
+      console.log(`📡 Incoming Request Origin: [${origin || "No Origin"}]`);
+      if (!origin || allowedOrigins.includes(origin)) {
+        console.log(`✅ Origin [${origin}] MATCHED allowedOrigins.`);
         return callback(null, true);
       }
-      return callback(null, true);
+      console.error(`❌ CORS BLOCKED: Origin [${origin}] NOT found in allowedOrigins:`, allowedOrigins);
+      return callback(new Error(`CORS blocked: Origin [${origin}] is not allowed.`));
     },
     credentials: true,
   })
