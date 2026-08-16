@@ -88,6 +88,11 @@ function EndpointsPageContent() {
       finalEvents.push(pendingText);
     }
 
+    if (finalEvents.length === 0) {
+      setErrorMsg("You must subscribe to at least one event (e.g. 'user.created', 'order.paid', or '*').");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const response = await apiFetch("/api/endpoints", {
@@ -252,11 +257,14 @@ function EndpointsPageContent() {
                 />
               </div>
               <div>
-                <label className="font-medium text-neutral-700 block mb-1">Subscribed Events</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="font-medium text-neutral-700 block">Subscribed Events</label>
+                  <span className="text-[11px] text-rose-500 font-medium">* At least 1 required</span>
+                </div>
                 <div className="flex gap-2">
                   <input
                     type="text"
-                    placeholder="user.find"
+                    placeholder="e.g. user.created, order.paid, or *"
                     value={eventInputText}
                     onChange={(e) => setEventInputText(e.target.value)}
                     onKeyDown={(e) => {
@@ -271,7 +279,7 @@ function EndpointsPageContent() {
                     <Plus className="w-3.5 h-3.5" /> Add
                   </button>
                 </div>
-                {endpointEventsList.length > 0 && (
+                {endpointEventsList.length > 0 ? (
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {endpointEventsList.map((ev) => (
                       <span key={ev} className="inline-flex items-center gap-1.5 bg-neutral-100 border border-neutral-200 text-neutral-800 font-mono text-xs px-2.5 py-0.5 rounded">
@@ -282,6 +290,8 @@ function EndpointsPageContent() {
                       </span>
                     ))}
                   </div>
+                ) : (
+                  <p className="text-[11px] text-neutral-400 mt-1">Type an event name above and press <strong>Add</strong> or Enter.</p>
                 )}
               </div>
               <div className="flex justify-end gap-2 pt-2">

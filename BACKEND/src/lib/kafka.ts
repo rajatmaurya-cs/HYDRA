@@ -64,8 +64,8 @@ export async function ensureTopicExists(topic: string) {
         topics: [
           {
             topic,
-            numPartitions: Number(process.env.KAFKA_PARTITIONS) || 3,
-            replicationFactor: 1,
+            numPartitions: -1,
+            replicationFactor: -1,
           },
         ],
       });

@@ -25,6 +25,15 @@ export async function createEndpoint(req: AuthenticatedRequest, res: Response) {
       return;
     }
 
+    const cleanEvents = Array.isArray(subscribedEvents)
+      ? subscribedEvents.filter((ev) => typeof ev === "string" && ev.trim().length > 0)
+      : [];
+
+    if (cleanEvents.length === 0) {
+      res.status(400).json({ message: "At least one subscribed event is required (e.g. 'user.created' or '*')." });
+      return;
+    }
+
     const org = await prisma.organization.findFirst({
       where: {
         id: organizationId,
@@ -46,7 +55,7 @@ export async function createEndpoint(req: AuthenticatedRequest, res: Response) {
         url,
         description: description || undefined,
         secret,
-        subscribedEvents: Array.isArray(subscribedEvents) ? subscribedEvents : [],
+        subscribedEvents: cleanEvents,
       }
     });
 
