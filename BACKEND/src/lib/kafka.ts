@@ -1,11 +1,17 @@
 import { Kafka, Producer, Consumer } from "kafkajs";
 
+if (process.env.KAFKA_SASL_USERNAME) {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+}
+
 const kafkaBrokers = (process.env.KAFKA_BOOTSTRAP_SERVERS || "").split(",").filter(Boolean);
 
 export const kafka = new Kafka({
   clientId: "hydra-service",
   brokers: kafkaBrokers,
-  ssl: true,
+  ssl: {
+    rejectUnauthorized: false,
+  },
   sasl: {
     mechanism: "scram-sha-256",
     username: process.env.KAFKA_SASL_USERNAME!,
@@ -59,7 +65,7 @@ export async function ensureTopicExists(topic: string) {
           {
             topic,
             numPartitions: Number(process.env.KAFKA_PARTITIONS) || 3,
-            replicationFactor: 2,
+            replicationFactor: 1,
           },
         ],
       });
