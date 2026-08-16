@@ -12,7 +12,15 @@ export interface AuthenticatedRequest extends Request {
 
 export async function requireAuth(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
-    const { accessToken, refreshToken } = req.cookies;
+    const cookieAccessToken = req.cookies?.accessToken;
+    const headerAccessToken = req.headers.authorization?.startsWith("Bearer ")
+      ? req.headers.authorization.split(" ")[1]
+      : null;
+    const accessToken = cookieAccessToken || headerAccessToken;
+
+    const cookieRefreshToken = req.cookies?.refreshToken;
+    const headerRefreshToken = (req.headers["x-refresh-token"] as string) || req.body?.refreshToken;
+    const refreshToken = cookieRefreshToken || headerRefreshToken;
 
     let userId: string | null = null;
 
@@ -39,7 +47,7 @@ export async function requireAuth(req: AuthenticatedRequest, res: Response, next
           res.cookie('accessToken', newAccessToken, {
             httpOnly: true,
             secure: isProduction,
-            sameSite: 'lax',
+            sameSite: isProduction ? 'none' : 'lax',
             maxAge: 15 * 60 * 1000,
           });
         }

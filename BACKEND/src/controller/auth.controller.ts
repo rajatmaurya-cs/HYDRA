@@ -61,10 +61,16 @@ export async function userLogin(req: Request, res: Response) {
   try {
     const { email, password } = req.body;
 
+    console.log(`Request Reached the Backend Email ${email} & Password: ${password}`)
+
+    console.log("✅ 1 ")
+
     if (!email || !password) {
       res.status(400).json({ message: "Email and password are required." });
       return;
     }
+
+    console.log("✅ 2 ")
 
     const normalizedEmail = email.toLowerCase().trim();
 
@@ -72,15 +78,21 @@ export async function userLogin(req: Request, res: Response) {
       where: { email: normalizedEmail }
     });
 
+    console.log("✅ 3 ")
+
     if (!user) {
       res.status(401).json({ message: "Invalid email or password." });
       return;
     }
 
+    console.log("✅ 4 ")
+
     if (!user.passwordHash) {
       res.status(400).json({ message: "Account requires social login or password is not set." });
       return;
     }
+
+    console.log("✅ 5 ")
 
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
 
@@ -89,8 +101,13 @@ export async function userLogin(req: Request, res: Response) {
       return;
     }
 
+    console.log("✅ 6 ")
+
     const accessToken = generateAccessToken(user.id);
     const refreshToken = generateRefreshToken(user.id);
+
+
+    console.log("✅ 7 ")
 
     await prisma.refreshToken.create({
       data: {
@@ -100,19 +117,21 @@ export async function userLogin(req: Request, res: Response) {
       }
     });
 
+    console.log("✅ 8 ")
+
     const isProduction = process.env.NODE_ENV === 'production';
 
     res.cookie('accessToken', accessToken, {
       httpOnly: true,
       secure: isProduction,
-      sameSite: 'lax',
+      sameSite: isProduction ? 'none' : 'lax',
       maxAge: 15 * 60 * 1000,
     });
 
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
       secure: isProduction,
-      sameSite: 'lax',
+      sameSite: isProduction ? 'none' : 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -120,7 +139,9 @@ export async function userLogin(req: Request, res: Response) {
 
     res.status(200).json({
       message: "Login successful.",
-      user: userWithoutPassword
+      user: userWithoutPassword,
+      accessToken,
+      refreshToken,
     });
 
   } catch (error: any) {
@@ -131,7 +152,15 @@ export async function userLogin(req: Request, res: Response) {
 
 export async function userMe(req: Request, res: Response) {
   try {
-    const { accessToken, refreshToken } = req.cookies;
+    const cookieAccessToken = req.cookies?.accessToken;
+    const headerAccessToken = req.headers.authorization?.startsWith("Bearer ")
+      ? req.headers.authorization.split(" ")[1]
+      : null;
+    const accessToken = cookieAccessToken || headerAccessToken;
+
+    const cookieRefreshToken = req.cookies?.refreshToken;
+    const headerRefreshToken = (req.headers["x-refresh-token"] as string) || req.body?.refreshToken;
+    const refreshToken = cookieRefreshToken || headerRefreshToken;
 
     let userId: string | null = null;
 
@@ -158,7 +187,7 @@ export async function userMe(req: Request, res: Response) {
           res.cookie('accessToken', newAccessToken, {
             httpOnly: true,
             secure: isProduction,
-            sameSite: 'lax',
+            sameSite: isProduction ? 'none' : 'lax',
             maxAge: 15 * 60 * 1000,
           });
         }
@@ -193,7 +222,7 @@ export async function userMe(req: Request, res: Response) {
 
 export async function userLogout(req: Request, res: Response) {
   try {
-    const { refreshToken } = req.cookies;
+    const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
 
     if (refreshToken) {
       await prisma.refreshToken.deleteMany({
@@ -201,8 +230,15 @@ export async function userLogout(req: Request, res: Response) {
       });
     }
 
-    res.clearCookie('accessToken');
-    res.clearCookie('refreshToken');
+    const isProduction = process.env.NODE_ENV === 'production';
+    const clearOptions = {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? ('none' as const) : ('lax' as const),
+    };
+
+    res.clearCookie('accessToken', clearOptions);
+    res.clearCookie('refreshToken', clearOptions);
 
     res.status(200).json({ message: "Logged out successfully." });
   } catch (error: any) {
@@ -213,7 +249,7 @@ export async function userLogout(req: Request, res: Response) {
 
 export async function userRefreshToken(req: Request, res: Response) {
   try {
-    const { refreshToken } = req.cookies;
+    const refreshToken = req.cookies?.refreshToken || (req.headers["x-refresh-token"] as string) || req.body?.refreshToken;
 
     if (!refreshToken) {
       res.status(401).json({ message: "Missing refresh token." });
@@ -241,11 +277,14 @@ export async function userRefreshToken(req: Request, res: Response) {
     res.cookie('accessToken', newAccessToken, {
       httpOnly: true,
       secure: isProduction,
-      sameSite: 'lax',
+      sameSite: isProduction ? 'none' : 'lax',
       maxAge: 15 * 60 * 1000,
     });
 
-    res.status(200).json({ message: "Access token refreshed successfully." });
+    res.status(200).json({
+      message: "Access token refreshed successfully.",
+      accessToken: newAccessToken,
+    });
   } catch (error: any) {
     console.error("Refresh token error:", error);
     res.status(500).json({ message: "Internal server error." });
