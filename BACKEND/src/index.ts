@@ -10,7 +10,6 @@ const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:4000",
   process.env.FRONTEND_URL,
-  process.env.FRONTED_URL,
 ].filter(Boolean) as string[];
 
 app.use(
@@ -23,6 +22,15 @@ app.use(
 
 app.use(express.json());
 app.use(cookieParser());
+
+app.get("/", (req, res) => {
+  res.status(200).json({
+    service: "HYDRA Event Ingress & Webhook Delivery Engine",
+    status: "online",
+    version: "1.0.0",
+    health: "/health",
+  });
+});
 
 app.get("/health", (req, res) => {
   res.status(200).json({
