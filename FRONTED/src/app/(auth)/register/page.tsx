@@ -2,9 +2,11 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 
 export default function RegisterPage() {
+  const router = useRouter();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -76,9 +78,12 @@ export default function RegisterPage() {
       if (response.ok) {
         setStatus({
           type: "success",
-          message: "Account created successfully! You can now log in.",
+          message: "Account created successfully! Redirecting to login...",
         });
         setFormData({ name: "", email: "", password: "", confirmPassword: "" });
+        setTimeout(() => {
+          router.push("/login");
+        }, 1200);
       } else {
         setStatus({
           type: "error",
