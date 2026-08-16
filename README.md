@@ -120,8 +120,8 @@ Traditional webhook dispatch mechanisms fail when downstream subscriber services
 | Layer | Technologies |
 | :--- | :--- |
 | **Backend Core** | Node.js, Express.js (v5), TypeScript, `tsx` |
-| **Database & ORM** | PostgreSQL, Prisma ORM |
-| **Streaming & Queue** | Apache Kafka (`kafkajs`), Redis (`ioredis`), BullMQ |
+| **Database & ORM** | Neon PostgreSQL (ACID), Prisma ORM |
+| **Streaming & Queue** | Aiven Cloud Kafka (`kafkajs` SASL SSL), Upstash Cloud Redis (`ioredis`), BullMQ |
 | **Authentication** | JWT (HTTP-only cookies), API Key Bearer Tokens, `bcryptjs` |
 | **Frontend** | Next.js 16 (App Router), React 19, Tailwind CSS v4, Lucide Icons |
 
@@ -131,7 +131,7 @@ Traditional webhook dispatch mechanisms fail when downstream subscriber services
 
 ### 1. Prerequisites
 - [Node.js](https://nodejs.org/) (v18.0.0 or later)
-- [Docker & Docker Compose](https://www.docker.com/) (for running PostgreSQL, Kafka, and Redis)
+- Cloud Infrastructure (Neon PostgreSQL, Upstash Redis, Aiven Apache Kafka)
 
 ### 2. Clone the Repository
 ```bash
@@ -139,62 +139,7 @@ git clone https://github.com/rajatmaurya/HYDRA.git
 cd HYDRA
 ```
 
-### 3. Spin Up Infrastructure (Docker)
-Create a `docker-compose.yml` in the root directory (or run your existing instances):
-
-```yaml
-version: '3.8'
-services:
-  postgres:
-    image: postgres:15-alpine
-    container_name: hydra-postgres
-    environment:
-      POSTGRES_USER: hydra_user
-      POSTGRES_PASSWORD: hydra_password
-      POSTGRES_DB: hydra_db
-    ports:
-      - "5432:5432"
-    volumes:
-      - hydra_pg_data:/var/lib/postgresql/data
-
-  redis:
-    image: redis:7-alpine
-    container_name: hydra-redis
-    ports:
-      - "6379:6379"
-
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.4.0
-    container_name: hydra-zookeeper
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-
-  kafka:
-    image: confluentinc/cp-kafka:7.4.0
-    container_name: hydra-kafka
-    depends_on:
-      - zookeeper
-    ports:
-      - "9092:9092"
-    environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://127.0.0.1:9092
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-
-volumes:
-  hydra_pg_data:
-```
-
-Start the services:
-```bash
-docker compose up -d
-```
-
----
-
-### 4. Configure & Run Backend
+### 3. Configure & Run Backend
 
 Navigate to `/BACKEND`:
 ```bash
@@ -202,14 +147,22 @@ cd BACKEND
 npm install
 ```
 
-Configure the environment file `.env`:
+Configure your environment file `.env`:
 ```env
 PORT=2000
-DATABASE_URL="postgresql://hydra_user:hydra_password@localhost:5432/hydra_db?schema=public"
-JWT_SECRET="your_super_secret_jwt_key_here"
-REDIS_HOST="127.0.0.1"
-REDIS_PORT=6379
-KAFKA_BROKERS="127.0.0.1:9092"
+DATABASE_URL="postgresql://neondb_owner:...@ep-curly-unit-ao7jvirt.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
+
+# Upstash Cloud Redis
+APP_REDIS_URL="rediss://default:...@adequate-eagle-111442.upstash.io:6379"
+QUEUE_REDIS_URL="rediss://default:...@positive-ant-102900.upstash.io:6379"
+
+# Aiven Cloud Kafka
+KAFKA_BOOTSTRAP_SERVERS="kafka-36ff9958-rajatmaurya176-f4bc.j.aivencloud.com:11133"
+KAFKA_SASL_USERNAME="avnadmin"
+KAFKA_SASL_PASSWORD="your_aiven_password"
+KAFKA_SASL_MECHANISM="scram-sha-256"
+
+WORKER_CONCURRENCY=50
 ```
 
 Initialize the database schema:

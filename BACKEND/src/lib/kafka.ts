@@ -1,10 +1,16 @@
-import { Kafka, Producer, Consumer } from 'kafkajs';
+import { Kafka, Producer, Consumer } from "kafkajs";
 
-const kafkaBroker = process.env.KAFKA_BOOTSTRAP_SERVERS || 'localhost:9092';
+const kafkaBrokers = (process.env.KAFKA_BOOTSTRAP_SERVERS || "").split(",").filter(Boolean);
 
 export const kafka = new Kafka({
-  clientId: 'hydra-service',
-  brokers: [kafkaBroker],
+  clientId: "hydra-service",
+  brokers: kafkaBrokers,
+  ssl: true,
+  sasl: {
+    mechanism: "scram-sha-256",
+    username: process.env.KAFKA_SASL_USERNAME!,
+    password: process.env.KAFKA_SASL_PASSWORD!,
+  },
 });
 
 let producer: Producer | null = null;
@@ -15,9 +21,9 @@ export async function getProducer(): Promise<Producer> {
   producer = kafka.producer();
   try {
     await producer.connect();
-    console.log('✅ Kafka Producer connected successfully.');
+    console.log("✅ Kafka Producer connected successfully (Aiven Cloud Kafka).");
   } catch (error) {
-    console.error('❌ Failed to connect Kafka Producer:', error);
+    console.error("❌ Failed to connect Kafka Producer:", error);
     producer = null;
     throw error;
   }
@@ -52,12 +58,12 @@ export async function ensureTopicExists(topic: string) {
         topics: [
           {
             topic,
-            numPartitions: 50,
-            replicationFactor: 1,
+            numPartitions: Number(process.env.KAFKA_PARTITIONS) || 3,
+            replicationFactor: 2,
           },
         ],
       });
-      console.log(`✅ Kafka Topic [${topic}] created automatically.`);
+      console.log(`✅ Kafka Topic [${topic}] created automatically on Cloud Kafka.`);
     }
   } catch (error) {
     console.error(`⚠️ Kafka Admin error while ensuring topic [${topic}]:`, error);
@@ -74,12 +80,11 @@ export async function disconnectProducer(): Promise<void> {
   if (producer) {
     try {
       await producer.disconnect();
-      console.log('✅ Kafka Producer disconnected.');
+      console.log("✅ Kafka Producer disconnected.");
     } catch (error) {
-      console.error('❌ Failed to disconnect Kafka Producer:', error);
+      console.error("❌ Failed to disconnect Kafka Producer:", error);
     } finally {
       producer = null;
     }
   }
 }
-
