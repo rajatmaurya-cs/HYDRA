@@ -6,15 +6,20 @@ import cookieParser from "cookie-parser";
 
 const app = express();
 
-const allowedOrigins = [
-  "http://localhost:3000",
-  "http://localhost:4000",
-  process.env.FRONTEND_URL,
-].filter(Boolean) as string[];
-
 app.use(
   cors({
-    origin: allowedOrigins,
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (
+        origin.startsWith("http://localhost:") ||
+        origin.endsWith(".vercel.app") ||
+        origin === process.env.FRONTEND_URL ||
+        origin === process.env.FRONTED_URL
+      ) {
+        return callback(null, true);
+      }
+      return callback(null, true);
+    },
     credentials: true,
   })
 );
