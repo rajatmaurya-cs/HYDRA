@@ -4,6 +4,8 @@
 
 **High-Throughput, Fault-Tolerant Webhook Delivery Infrastructure & Event Gateway**
 
+[![Live Demo](https://img.shields.io/badge/Live_App-https%3A%2F%2Fhydra--phi--three.vercel.app-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://hydra-phi-three.vercel.app)
+
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-18+-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org/)
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js&logoColor=white)](https://nextjs.org/)
@@ -13,13 +15,18 @@
 [![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg?style=flat-square)](https://opensource.org/licenses/ISC)
 
 <p align="center">
+  🌐 <strong>Live Application:</strong> <a href="https://hydra-phi-three.vercel.app">https://hydra-phi-three.vercel.app</a>
+</p>
+
+<p align="center">
   <a href="#-architecture">Architecture</a> •
   <a href="#-key-features">Key Features</a> •
   <a href="#-tech-stack">Tech Stack</a> •
   <a href="#-quick-start">Quick Start</a> •
   <a href="#-api-reference">API Reference</a> •
   <a href="#-webhook-signature-verification">Webhook Signatures</a> •
-  <a href="#-project-structure">Project Structure</a>
+  <a href="#-project-structure">Project Structure</a> •
+  <a href="#-author">Author</a>
 </p>
 
 </div>
@@ -381,6 +388,15 @@ HYDRA/
 
 ---
 
+## 👨‍💻 Author
+**Rajat Maurya**
+- **Live App**: [https://hydra-phi-three.vercel.app](https://hydra-phi-three.vercel.app)
+- **Email**: [rajatmaurya.dev@gmail.com](mailto:rajatmaurya.dev@gmail.com)
+- **GitHub**: [@rajatmaurya-cs](https://github.com/rajatmaurya-cs)
+- **LinkedIn**: [Rajat Maurya](https://www.linkedin.com/in/rajat-maurya-3a172331b/)
+
+---
+
 ## 📄 License
 
 This project is licensed under the **ISC License**.
@@ -388,5 +404,5 @@ This project is licensed under the **ISC License**.
 ---
 
 <div align="center">
-  <sub>Engineered with precision for mission-critical webhook reliability.</sub>
+  <sub>Engineered with precision by <strong>Rajat Maurya</strong> for mission-critical webhook reliability.</sub>
 </div>

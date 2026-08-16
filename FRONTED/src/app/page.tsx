@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import Footer from "@/components/Footer";
 import {
   ShieldCheck,
   RefreshCw,
@@ -91,26 +92,21 @@ print(response.json()) # {"status": "ACCEPTED", "eventId": "evt_..."}`,
   };
 
   return (
-    <div className="min-h-screen bg-white text-neutral-900 font-sans pt-24 pb-24 overflow-hidden">
+    <div className="min-h-screen bg-white text-neutral-900 font-sans pt-24 pb-0 overflow-hidden">
       
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#f5f5f5_1px,transparent_1px),linear-gradient(to_bottom,#f5f5f5_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] -z-10 pointer-events-none" />
 
       
       <section className="max-w-5xl mx-auto px-6 md:px-12 text-center space-y-7 pt-6">
         
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-neutral-100/90 border border-neutral-200 rounded-full text-xs font-normal text-neutral-700 backdrop-blur-sm shadow-2xs">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span>Open Source Event Gateway</span>
-        </div>
-
         
         <h1 className="text-4xl sm:text-6xl font-medium tracking-tight text-neutral-900 leading-[1.12]">
-          Event-Driven Webhook Dispatch.
+          Never Miss an Event Again.
         </h1>
 
         
         <p className="text-base sm:text-lg text-neutral-500 max-w-2xl mx-auto font-normal leading-relaxed">
-          Hydra provides reliable webhook delivery infrastructure utilizing the transactional outbox pattern, Kafka for stream buffering, and BullMQ for durable fan-out dispatch.
+          Reliable webhook delivery infrastructure with automatic retries, failure handling, and durable event processing.
         </p>
 
         
@@ -123,7 +119,7 @@ print(response.json()) # {"status": "ACCEPTED", "eventId": "evt_..."}`,
             <ArrowRight className="w-3.5 h-3.5 text-neutral-400" />
           </Link>
           <a
-            href="https://github.com/rajatmaurya/HYDRA"
+            href="https://github.com/rajatmaurya-cs/HYDRA"
             target="_blank"
             rel="noopener noreferrer"
             className="w-full sm:w-auto px-7 py-3 bg-white border border-neutral-200 hover:border-neutral-400 text-neutral-800 font-normal rounded-lg transition-all text-xs tracking-wide active:scale-98 cursor-pointer flex items-center justify-center"
@@ -364,7 +360,7 @@ print(response.json()) # {"status": "ACCEPTED", "eventId": "evt_..."}`,
       </section>
 
       
-      <section className="max-w-5xl mx-auto px-6 md:px-12 pt-24">
+      <section className="max-w-5xl mx-auto px-6 md:px-12 pt-24 pb-20">
         <div className="p-8 md:p-12 bg-neutral-900 text-white rounded-3xl text-center space-y-5 border border-neutral-800 shadow-xl">
           <h2 className="text-2xl sm:text-4xl font-medium tracking-tight">Deploy your event infrastructure</h2>
           <p className="text-neutral-400 text-xs sm:text-sm max-w-lg mx-auto font-normal leading-relaxed">
@@ -381,6 +377,9 @@ print(response.json()) # {"status": "ACCEPTED", "eventId": "evt_..."}`,
           </div>
         </div>
       </section>
+
+      
+      <Footer />
 
     </div>
   );
