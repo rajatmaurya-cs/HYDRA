@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "HYDRA | Enterprise Webhook Gateway & Resilient Event Delivery",
-  description: "Enterprise event gateway built for zero data loss, sub-millisecond intake, automated intelligent retries, downstream circuit breaking, and real-time observability.",
+  title: "HYDRA — Resilient Webhook Delivery Platform",
+  description: "Never Miss an Event Again",
 };
 
 import Navbar from "@/components/Navbar";
