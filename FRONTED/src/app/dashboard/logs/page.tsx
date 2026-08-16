@@ -3,6 +3,7 @@
 import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { ScrollText, RefreshCw, Eye, X } from "lucide-react";
+import { apiFetch } from "@/lib/api";
 
 interface EndpointInfo {
   id: string;
@@ -51,10 +52,10 @@ function LogsPageContent() {
   const fetchLogs = async (targetOrgId: string, status: string) => {
     setLoading(true);
     try {
-      const url = `http://localhost:2000/api/organizations/${targetOrgId}/logs${
+      const url = `/api/organizations/${targetOrgId}/logs${
         status !== "ALL" ? `?status=${status}` : ""
       }`;
-      const res = await fetch(url, { credentials: "include" });
+      const res = await apiFetch(url);
       if (res.ok) {
         const data = await res.json();
         setLogs(data.logs || []);
@@ -110,7 +111,7 @@ function LogsPageContent() {
 
   return (
     <div className="space-y-6 font-sans">
-      {/* Header */}
+      
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-neutral-200 pb-4 mb-6">
         <div>
           <h1 className="text-2xl font-medium tracking-tight text-neutral-900 flex items-center gap-2">
@@ -123,7 +124,7 @@ function LogsPageContent() {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Status Filter */}
+          
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
@@ -175,19 +176,19 @@ function LogsPageContent() {
               <tbody className="divide-y divide-neutral-100">
                 {logs.map((log) => (
                   <tr key={log.id} className="hover:bg-neutral-50/80 transition-colors">
-                    {/* Delivery ID */}
+                    
                     <td className="py-3.5 px-4 font-mono font-medium text-neutral-900 text-[11px] select-all">
                       {log.id}
                     </td>
 
-                    {/* Event Type */}
+                    
                     <td className="py-3.5 px-4">
                       <span className="font-mono font-semibold text-neutral-800 bg-neutral-100 border border-neutral-200 px-2 py-0.5 rounded text-[11px]">
                         {log.event.eventType}
                       </span>
                     </td>
 
-                    {/* Target Endpoint */}
+                    
                     <td className="py-3.5 px-4">
                       <span className="font-medium text-neutral-900 block">{log.endpoint.name}</span>
                       <code className="text-[10px] text-neutral-400 truncate block max-w-[200px] font-mono">
@@ -195,22 +196,22 @@ function LogsPageContent() {
                       </code>
                     </td>
 
-                    {/* Status Badge */}
+                    
                     <td className="py-3.5 px-4">
                       {getStatusBadge(log.status, log.statusCode)}
                     </td>
 
-                    {/* Attempt Count */}
+                    
                     <td className="py-3.5 px-4 text-neutral-600 font-mono">
                       {log.attemptCount}
                     </td>
 
-                    {/* Timestamp */}
+                    
                     <td className="py-3.5 px-4 text-neutral-500 font-mono text-[11px]">
                       {new Date(log.createdAt).toLocaleString()}
                     </td>
 
-                    {/* Action Payload */}
+                    
                     <td className="py-3.5 px-4 text-right">
                       <button
                         onClick={() => setSelectedPayload({
@@ -237,7 +238,7 @@ function LogsPageContent() {
         </div>
       )}
 
-      {/* Delivery Log Modal Inspector */}
+      
       {selectedPayload && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-white border border-neutral-200 rounded-xl w-full max-w-lg p-6 relative shadow-xl font-normal text-xs">

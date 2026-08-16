@@ -12,6 +12,7 @@ import {
   Zap,
   ArrowRight,
 } from "lucide-react";
+import { apiFetch } from "@/lib/api";
 
 interface FailedJob {
   id: string;
@@ -57,9 +58,7 @@ function OverviewPageContent() {
   const fetchMetrics = async (targetOrgId: string) => {
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:2000/api/organizations/${targetOrgId}/metrics`, {
-        credentials: "include",
-      });
+      const res = await apiFetch(`/api/organizations/${targetOrgId}/metrics`);
       if (res.ok) {
         const data = await res.json();
         setMetrics(data.metrics);
@@ -81,7 +80,7 @@ function OverviewPageContent() {
 
   return (
     <div className="space-y-6 font-sans">
-      {/* Header */}
+      
       <div className="border-b border-neutral-200 pb-4 mb-6">
         <h1 className="text-2xl font-medium tracking-tight text-neutral-900">
           Overview
@@ -91,9 +90,9 @@ function OverviewPageContent() {
         </p>
       </div>
 
-      {/* KPI Cards Grid */}
+      
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-        {/* KPI 1: Events Ingested */}
+        
         <div className="p-4 bg-white border border-neutral-200 rounded-xl shadow-2xs">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] font-medium text-neutral-400 uppercase tracking-wider">
@@ -105,7 +104,7 @@ function OverviewPageContent() {
           <span className="text-[10px] text-neutral-400 font-normal mt-0.5 block">Raw events received by HYDRA</span>
         </div>
 
-        {/* KPI 2: Deliveries */}
+        
         <div className="p-4 bg-white border border-neutral-200 rounded-xl shadow-2xs">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] font-medium text-neutral-400 uppercase tracking-wider">
@@ -117,7 +116,7 @@ function OverviewPageContent() {
           <span className="text-[10px] text-neutral-400 font-normal mt-0.5 block">Total endpoint deliveries created</span>
         </div>
 
-        {/* KPI 3: Successful Deliveries */}
+        
         <div className="p-4 bg-white border border-neutral-200 rounded-xl shadow-2xs">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] font-medium text-neutral-400 uppercase tracking-wider">
@@ -129,7 +128,7 @@ function OverviewPageContent() {
           <span className="text-[10px] text-neutral-400 font-normal mt-0.5 block">Deliveries that succeeded</span>
         </div>
 
-        {/* KPI 4: Failed / Dead Deliveries */}
+        
         <div className="p-4 bg-white border border-neutral-200 rounded-xl shadow-2xs">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] font-medium text-neutral-400 uppercase tracking-wider">
@@ -141,7 +140,7 @@ function OverviewPageContent() {
           <span className="text-[10px] text-neutral-400 font-normal mt-0.5 block">Exhausted retry limit</span>
         </div>
 
-        {/* KPI 5: Success Rate */}
+        
         <div className="p-4 bg-white border border-neutral-200 rounded-xl shadow-2xs">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] font-medium text-neutral-400 uppercase tracking-wider">
@@ -153,7 +152,7 @@ function OverviewPageContent() {
           <span className="text-[10px] text-neutral-400 font-normal mt-0.5 block">Successful / Total deliveries</span>
         </div>
 
-        {/* KPI 6: Average Latency */}
+        
         <div className="p-4 bg-white border border-neutral-200 rounded-xl shadow-2xs">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] font-medium text-neutral-400 uppercase tracking-wider">
@@ -165,7 +164,7 @@ function OverviewPageContent() {
           <span className="text-[10px] text-neutral-400 font-normal mt-0.5 block">Mean HTTP dispatch response time</span>
         </div>
 
-        {/* KPI 7: P95 Latency */}
+        
         <div className="p-4 bg-white border border-neutral-200 rounded-xl shadow-2xs">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] font-medium text-neutral-400 uppercase tracking-wider">
@@ -178,7 +177,7 @@ function OverviewPageContent() {
         </div>
       </div>
 
-      {/* Recent 10 Failed Deliveries Table */}
+      
       <div className="p-5 bg-white border border-neutral-200 rounded-xl shadow-2xs">
         <div className="flex items-center justify-between mb-4 border-b border-neutral-100 pb-3">
           <div>

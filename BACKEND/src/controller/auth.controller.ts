@@ -210,3 +210,44 @@ export async function userLogout(req: Request, res: Response) {
     res.status(500).json({ message: "Internal server error." });
   }
 }
+
+export async function userRefreshToken(req: Request, res: Response) {
+  try {
+    const { refreshToken } = req.cookies;
+
+    if (!refreshToken) {
+      res.status(401).json({ message: "Missing refresh token." });
+      return;
+    }
+
+    const decoded = verifyRefreshToken(refreshToken);
+    if (!decoded) {
+      res.status(401).json({ message: "Invalid or expired refresh token." });
+      return;
+    }
+
+    const dbRefreshToken = await prisma.refreshToken.findUnique({
+      where: { token: refreshToken }
+    });
+
+    if (!dbRefreshToken || dbRefreshToken.expiresAt <= new Date()) {
+      res.status(401).json({ message: "Refresh token has expired or was revoked." });
+      return;
+    }
+
+    const newAccessToken = generateAccessToken(decoded.userId);
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    res.cookie('accessToken', newAccessToken, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: 'lax',
+      maxAge: 15 * 60 * 1000,
+    });
+
+    res.status(200).json({ message: "Access token refreshed successfully." });
+  } catch (error: any) {
+    console.error("Refresh token error:", error);
+    res.status(500).json({ message: "Internal server error." });
+  }
+}

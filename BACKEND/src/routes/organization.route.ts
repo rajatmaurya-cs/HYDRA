@@ -18,7 +18,7 @@ organizationRoutes.get('/:orgId', requireAuth, getOrganizationById);
 organizationRoutes.get('/:orgId/metrics', requireAuth, getOrganizationMetrics);
 organizationRoutes.get('/:orgId/logs', requireAuth, getOrganizationDeliveryLogs);
 
-// Retry DLQ Routes
+
 organizationRoutes.post('/:orgId/logs/:deliveryId/retry', requireAuth, retrySingleDeadDelivery);
 organizationRoutes.post('/:orgId/logs/retry-all', requireAuth, retryAllDeadDeliveriesForOrg);
 

@@ -17,10 +17,7 @@ interface DeliveryRecord {
   eventId: string;
 }
 
-/**
- * Re-computes and synchronizes an Event's aggregate status, deliveredCount, and failedCount
- * from its source-of-truth EventDeliveryWebhook records.
- */
+
 export async function syncEventState(eventId: string): Promise<void> {
   try {
     const deliveries = await prisma.eventDeliveryWebhook.findMany({
@@ -46,7 +43,7 @@ export async function syncEventState(eventId: string): Promise<void> {
     } else if (deadCount === totalDeliveries) {
       status = 'FAILED';
     } else {
-      // Mixed finished state: at least 1 delivered and at least 1 dead
+      
       status = 'PARTIAL_SUCCESS';
     }
 
@@ -96,7 +93,7 @@ export async function startBackgroundServices() {
           if (endpointIds.length > 0) {
             console.log(`🎯 Matched ${endpointIds.length} subscribed endpoint(s). Creating delivery webhooks...`);
 
-            // Set totalDeliveries count & status = PROCESSING on parent Event
+            
             await prisma.event.update({
               where: { id: eventId },
               data: { 
@@ -105,7 +102,7 @@ export async function startBackgroundServices() {
               },
             });
 
-            // 1. Blindly attempt to insert delivery records (ON CONFLICT DO NOTHING handles duplicates)
+            
             await prisma.$queryRaw`
               INSERT INTO "EventDeliveryWebhook" (
                 "id",
@@ -132,7 +129,7 @@ export async function startBackgroundServices() {
               ON CONFLICT ("eventId", "endpointId") DO NOTHING;
             `;
 
-            // 2. Smart Re-fetch: Retrieve ALL PENDING delivery records for this event + endpoints.
+            
             const pendingDeliveries = await prisma.eventDeliveryWebhook.findMany({
               where: {
                 eventId,
@@ -146,7 +143,7 @@ export async function startBackgroundServices() {
               },
             });
 
-            // 3. Enqueue all pending deliveries into BullMQ (deduplicated by delivery.id)
+            
             for (const delivery of pendingDeliveries) {
               await addWebhookJob(delivery.id, {
                 deliveryId: delivery.id,
@@ -187,14 +184,14 @@ export async function startBackgroundServices() {
     console.error('❌ Failed to start Kafka consumer:', kafkaError);
   }
 
-  // BullMQ Worker to dispatch HTTP webhooks
+  
   activeWorker = createWebhookWorker(async (job) => {
 
     const { deliveryId, endpointId, payload, eventType } = job.data;
 
     if (!deliveryId || !endpointId) return;
 
-    // Atomically claim delivery if it is in DEAD or FAILED status (Manual Retry flow)
+    
     const currentDelivery = await prisma.eventDeliveryWebhook.findUnique({
       where: { id: deliveryId },
       select: { status: true, eventId: true },
@@ -307,7 +304,6 @@ export async function startBackgroundServices() {
       const attemptsMade = job.attemptsMade + 1;
       const maxAttempts = job.opts.attempts || 5;
       
-      // Non-retriable: 4xx Client Errors (e.g. 400, 401, 404) should fail permanently immediately
       const isNonRetriable = httpStatusCode !== null && httpStatusCode >= 400 && httpStatusCode < 500;
       const isFinalAttempt = isNonRetriable || (attemptsMade >= maxAttempts);
       const newDeliveryStatus = isFinalAttempt ? 'DEAD' : 'FAILED';
@@ -335,7 +331,7 @@ export async function startBackgroundServices() {
 
       await syncEventState(updatedDelivery.eventId);
 
-      // Re-throw to trigger BullMQ retry ONLY if it is a retriable failure (5xx or network error) and attempts remain
+      
       if (!isNonRetriable) {
         throw networkError;
       }

@@ -3,6 +3,7 @@
 import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Link2, Plus, X, ArrowRight } from "lucide-react";
+import { apiFetch } from "@/lib/api";
 
 interface Endpoint {
   id: string;
@@ -21,7 +22,7 @@ function EndpointsPageContent() {
   const [endpoints, setEndpoints] = useState<Endpoint[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Form State
+  
   const [showEndpointModal, setShowEndpointModal] = useState(false);
   const [endpointName, setEndpointName] = useState("");
   const [endpointUrl, setEndpointUrl] = useState("");
@@ -42,9 +43,7 @@ function EndpointsPageContent() {
   const fetchEndpoints = async (targetOrgId: string) => {
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:2000/api/endpoints?organizationId=${targetOrgId}`, {
-        credentials: "include",
-      });
+      const res = await apiFetch(`/api/endpoints?organizationId=${targetOrgId}`);
       if (res.ok) {
         const data = await res.json();
         setEndpoints(data.endpoints || []);
@@ -82,7 +81,7 @@ function EndpointsPageContent() {
       return;
     }
 
-    // Auto-capture any pending text typed in eventInputText if user didn't click + Add
+    
     let finalEvents = [...endpointEventsList];
     const pendingText = eventInputText.trim();
     if (pendingText && !finalEvents.includes(pendingText)) {
@@ -91,10 +90,8 @@ function EndpointsPageContent() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch("http://localhost:2000/api/endpoints", {
+      const response = await apiFetch("/api/endpoints", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({
           organizationId: orgId,
           name: endpointName,
@@ -126,7 +123,7 @@ function EndpointsPageContent() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      
       <div className="flex items-center justify-between border-b border-neutral-200 pb-4 mb-6">
         <div>
           <h1 className="text-2xl font-medium tracking-tight text-neutral-900 flex items-center gap-2">
@@ -146,7 +143,7 @@ function EndpointsPageContent() {
         </button>
       </div>
 
-      {/* Notifications */}
+      
       {errorMsg && (
         <div className="p-3 mb-6 rounded-md bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center justify-between font-normal">
           <span>{errorMsg}</span>
@@ -223,7 +220,7 @@ function EndpointsPageContent() {
         </div>
       )}
 
-      {/* Register Endpoint Modal */}
+      
       {showEndpointModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-white border border-neutral-200 rounded-xl w-full max-w-lg p-6 relative shadow-xl">

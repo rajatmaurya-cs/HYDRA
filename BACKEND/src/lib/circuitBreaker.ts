@@ -1,8 +1,8 @@
 import { appRedis } from './redis';
 
 const FAILURE_THRESHOLD = 5;
-const OPEN_TIMEOUT = 60000; // 60 seconds cooldown before moving to HALF_OPEN
-const HALF_OPEN_LEASE = 15000; // 15 seconds probe lease timeout
+const OPEN_TIMEOUT = 60000; 
+const HALF_OPEN_LEASE = 15000; 
 
 const canRequestLua = `
 local state = redis.call("HGET", KEYS[1], "state")

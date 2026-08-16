@@ -3,6 +3,7 @@
 import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Package, RefreshCw, X, Code2 } from "lucide-react";
+import { apiFetch } from "@/lib/api";
 
 interface WebhookDelivery {
   id: string;
@@ -18,8 +19,10 @@ interface RawEvent {
   id: string;
   eventType: string;
   status: string;
+  totalDeliveries: number;
+  deliveredCount: number;
+  failedCount: number;
   createdAt: string;
-  idempotencyKey: string | null;
   payload: any;
   webhookDeliveries: WebhookDelivery[];
 }
@@ -42,9 +45,7 @@ function EventsPageContent() {
   const fetchEvents = async (targetOrgId: string) => {
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:2000/v1/events?organizationId=${targetOrgId}`, {
-        credentials: "include",
-      });
+      const res = await apiFetch(`/v1/events?organizationId=${targetOrgId}`);
       if (res.ok) {
         const data = await res.json();
         setEvents(data.events || []);
@@ -65,7 +66,7 @@ function EventsPageContent() {
 
   return (
     <div className="space-y-6 font-sans">
-      {/* Header */}
+      
       <div className="flex items-center justify-between border-b border-neutral-200 pb-4 mb-6">
         <div>
           <h1 className="text-2xl font-medium tracking-tight text-neutral-900 flex items-center gap-2">
@@ -114,19 +115,18 @@ function EventsPageContent() {
                 {events.map((ev) => (
                   <tr key={ev.id} className="hover:bg-neutral-50/80 transition-colors">
                     
-                    {/* Event ID */}
                     <td className="py-3.5 px-4 font-mono font-medium text-neutral-900 text-[11px] select-all">
                       {ev.id}
                     </td>
 
-                    {/* Event Type */}
+                    
                     <td className="py-3.5 px-4">
                       <span className="font-mono font-semibold text-neutral-800 bg-neutral-100 border border-neutral-200 px-2 py-0.5 rounded text-[11px]">
                         {ev.eventType}
                       </span>
                     </td>
 
-                    {/* Event Status */}
+                    
                     <td className="py-3.5 px-4">
                       <span
                         className={`text-[9px] font-semibold px-2 py-0.5 rounded border uppercase ${
@@ -143,7 +143,7 @@ function EventsPageContent() {
                       </span>
                     </td>
 
-                    {/* Endpoints Used */}
+                    
                     <td className="py-3.5 px-4">
                       {ev.webhookDeliveries.length === 0 ? (
                         <span className="text-neutral-400 text-[11px]">None (0 Subscribed)</span>
@@ -171,12 +171,12 @@ function EventsPageContent() {
                       )}
                     </td>
 
-                    {/* Timestamp */}
+                    
                     <td className="py-3.5 px-4 text-neutral-500 font-mono text-[11px]">
                       {new Date(ev.createdAt).toLocaleString()}
                     </td>
 
-                    {/* Payload Action */}
+                    
                     <td className="py-3.5 px-4 text-right">
                       <button
                         onClick={() => setSelectedPayload(ev.payload)}
@@ -194,7 +194,7 @@ function EventsPageContent() {
         </div>
       )}
 
-      {/* JSON Payload Modal */}
+      
       {selectedPayload && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-white border border-neutral-200 rounded-xl w-full max-w-lg p-6 relative shadow-xl font-normal">

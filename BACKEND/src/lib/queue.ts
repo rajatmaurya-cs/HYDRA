@@ -36,12 +36,10 @@ export async function addWebhookJob(jobName: string, data: any, jobId?: string) 
   }
 }
 
-/**
- * Re-enqueue a single Dead Delivery record back into BullMQ for delivery attempt
- */
+
 export async function reEnqueueDeadDelivery(deliveryId: string, organizationId?: string) {
   try {
-    // 1. Fetch Dead delivery record with related event and endpoint metadata
+    
     const delivery = await prisma.eventDeliveryWebhook.findUnique({
       where: { id: deliveryId },
       include: {
@@ -67,8 +65,7 @@ export async function reEnqueueDeadDelivery(deliveryId: string, organizationId?:
       throw new Error(`Forbidden: Delivery [${deliveryId}] does not belong to organization [${organizationId}].`);
     }
 
-    // 2. Add job to BullMQ queue. DB status remains unchanged (DEAD/FAILED).
-    // The worker will atomically claim and transition the DB status at execution time.
+    
     const job = await addWebhookJob(delivery.id, {
       deliveryId: delivery.id,
       endpointId: delivery.endpointId,
@@ -87,9 +84,7 @@ export async function reEnqueueDeadDelivery(deliveryId: string, organizationId?:
   }
 }
 
-/**
- * Re-enqueue all Dead Delivery records for an organization
- */
+
 export async function reEnqueueAllDeadDeliveries(organizationId: string) {
   try {
     
@@ -125,7 +120,7 @@ const WORKER_CONCURRENCY = parseInt(process.env.WORKER_CONCURRENCY || '50', 10);
 export function createWebhookWorker(processor: (job: Job) => Promise<void>): Worker {
   const worker = new Worker(WEBHOOK_QUEUE_NAME, processor, {
     connection: queueRedis,
-    concurrency: WORKER_CONCURRENCY, // Balanced with PostgreSQL connection pool (default: 50)
+    concurrency: WORKER_CONCURRENCY, 
   });
 
   worker.on('completed', (job: Job) => {

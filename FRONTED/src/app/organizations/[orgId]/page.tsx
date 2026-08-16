@@ -12,6 +12,7 @@ import {
   RotateCcw,
   Trash2,
 } from "lucide-react";
+import { apiFetch } from "@/lib/api";
 
 interface Organization {
   id: string;
@@ -54,9 +55,8 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
   const fetchDetails = async () => {
     try {
       setLoading(true);
-      const orgResponse = await fetch(`http://localhost:2000/api/organizations/${orgId}`, {
+      const orgResponse = await apiFetch(`/api/organizations/${orgId}`, {
         method: "GET",
-        credentials: "include",
       });
 
       if (orgResponse.ok) {
@@ -79,9 +79,8 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
       return;
     }
     try {
-      const response = await fetch(`http://localhost:2000/api/api-keys/${keyId}/revoke`, {
+      const response = await apiFetch(`/api/api-keys/${keyId}/revoke`, {
         method: "PATCH",
-        credentials: "include",
       });
       if (response.ok) {
         setApiKeys((prev) =>
@@ -100,9 +99,8 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
       return;
     }
     try {
-      const response = await fetch(`http://localhost:2000/api/api-keys/${keyId}/rotate`, {
+      const response = await apiFetch(`/api/api-keys/${keyId}/rotate`, {
         method: "POST",
-        credentials: "include",
       });
       const data = await response.json();
       if (response.ok) {
@@ -136,7 +134,6 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
     <div className="min-h-screen bg-white text-neutral-900 pt-24 pb-12 px-6 md:px-12 font-sans">
       <div className="max-w-4xl mx-auto">
         
-        {/* Back Link & Header */}
         <button
           onClick={() => router.push("/organizations")}
           className="flex items-center gap-1.5 text-neutral-500 hover:text-neutral-900 transition-colors mb-5 text-xs cursor-pointer font-normal"
@@ -145,7 +142,7 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
           <span>Back to Organizations</span>
         </button>
 
-        {/* Organization Header */}
+        
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-neutral-200/80 pb-5 mb-8">
           <div>
             <div className="flex items-center gap-2">
@@ -171,7 +168,7 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ o
           </button>
         </div>
 
-        {/* API Credentials Section */}
+        
         <div className="p-6 bg-neutral-50/70 border border-neutral-200 rounded-xl">
           <div className="flex items-center justify-between mb-4">
             <div>

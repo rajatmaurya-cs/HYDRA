@@ -18,9 +18,9 @@ import {
   Sparkles,
 } from "lucide-react";
 
-// ==========================================
-// Type Definitions
-// ==========================================
+
+
+
 
 export type AuthRequirement = "authenticated" | "unauthenticated" | "all";
 
@@ -40,9 +40,9 @@ export interface NavbarProps {
   fluid?: boolean;
 }
 
-// ==========================================
-// Navigation Configuration
-// ==========================================
+
+
+
 
 const NAV_LINKS: NavLinkItem[] = [
   {
@@ -71,9 +71,9 @@ const NAV_LINKS: NavLinkItem[] = [
  
 ];
 
-// ==========================================
-// Navbar Component
-// ==========================================
+
+
+
 
 export default function Navbar({ className = "", fluid = false }: NavbarProps) {
   const pathname = usePathname();
@@ -85,13 +85,13 @@ export default function Navbar({ className = "", fluid = false }: NavbarProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
 
-  // Close menus when route changes
+  
   useEffect(() => {
     setMobileMenuOpen(false);
     setUserDropdownOpen(false);
   }, [pathname]);
 
-  // Click outside listener for user dropdown
+  
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -107,7 +107,7 @@ export default function Navbar({ className = "", fluid = false }: NavbarProps) {
     };
   }, [userDropdownOpen]);
 
-  // Escape key handler to close popovers
+  
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -120,7 +120,7 @@ export default function Navbar({ className = "", fluid = false }: NavbarProps) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  // Helper function to check if route is active
+  
   const isLinkActive = useCallback(
     (item: NavLinkItem): boolean => {
       if (item.external) return false;
@@ -132,7 +132,7 @@ export default function Navbar({ className = "", fluid = false }: NavbarProps) {
     [pathname]
   );
 
-  // Filter links based on current authentication state
+  
   const visibleNavLinks = NAV_LINKS.filter((item) => {
     if (!item.authRequirement || item.authRequirement === "all") return true;
     if (item.authRequirement === "authenticated") return Boolean(user);
@@ -159,7 +159,7 @@ export default function Navbar({ className = "", fluid = false }: NavbarProps) {
           fluid ? "w-full" : "max-w-7xl"
         }`}
       >
-        {/* ================= Left: Brand Logo ================= */}
+        
         <div className="flex items-center gap-6">
           <Link
             href="/"
@@ -179,7 +179,7 @@ export default function Navbar({ className = "", fluid = false }: NavbarProps) {
             </div>
           </Link>
 
-          {/* Desktop Nav Links */}
+          
           <nav className="hidden md:flex items-center gap-1" aria-label="Main Navigation">
             {visibleNavLinks.map((item) => {
               const active = isLinkActive(item);
@@ -230,14 +230,14 @@ export default function Navbar({ className = "", fluid = false }: NavbarProps) {
           </nav>
         </div>
 
-        {/* ================= Right: Auth Actions / Profile ================= */}
+        
         <div className="flex items-center gap-2 sm:gap-3">
           {isLoading ? (
             <div className="w-5 h-5 flex items-center justify-center">
               <div className="w-3.5 h-3.5 border-2 border-neutral-300 border-t-neutral-900 rounded-full animate-spin" />
             </div>
           ) : user ? (
-            /* Authenticated User Menu */
+            
             <div className="relative" ref={dropdownRef}>
               <button
                 type="button"
@@ -264,7 +264,7 @@ export default function Navbar({ className = "", fluid = false }: NavbarProps) {
                 />
               </button>
 
-              {/* User Dropdown Popover */}
+              
               {userDropdownOpen && (
                 <div className="absolute right-0 mt-2 w-56 bg-white border border-neutral-200 rounded-xl shadow-lg py-1.5 z-50 animate-in fade-in slide-in-from-top-1 duration-150">
                   <div className="px-3 py-2 border-b border-neutral-100">
@@ -312,7 +312,7 @@ export default function Navbar({ className = "", fluid = false }: NavbarProps) {
               )}
             </div>
           ) : (
-            /* Unauthenticated Guest Actions */
+            
             <div className="flex items-center gap-2">
               <Link
                 href="/login"
@@ -333,7 +333,7 @@ export default function Navbar({ className = "", fluid = false }: NavbarProps) {
             </div>
           )}
 
-          {/* Mobile Menu Button */}
+          
           <button
             type="button"
             onClick={() => setMobileMenuOpen((prev) => !prev)}
@@ -346,7 +346,7 @@ export default function Navbar({ className = "", fluid = false }: NavbarProps) {
         </div>
       </div>
 
-      {/* ================= Mobile Menu Drawer ================= */}
+      
       {mobileMenuOpen && (
         <div
           ref={mobileMenuRef}
@@ -407,7 +407,7 @@ export default function Navbar({ className = "", fluid = false }: NavbarProps) {
             })}
           </nav>
 
-          {/* User profile / actions inside mobile drawer */}
+          
           {user ? (
             <div className="pt-3 border-t border-neutral-100 flex items-center justify-between px-1">
               <div className="flex items-center gap-2">

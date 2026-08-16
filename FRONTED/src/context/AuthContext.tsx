@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { apiFetch } from "@/lib/api";
 
 interface User {
   id: string;
@@ -27,12 +28,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchCurrentUser = async () => {
     try {
-      const response = await fetch("http://localhost:2000/api/auth/me", {
+      const response = await apiFetch("/api/auth/me", {
         method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
       });
 
       if (response.ok) {
@@ -59,9 +56,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
-      await fetch("http://localhost:2000/api/auth/logout", {
+      await apiFetch("/api/auth/logout", {
         method: "POST",
-        credentials: "include",
       });
     } catch (error) {
       console.error("Failed to call backend logout:", error);

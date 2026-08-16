@@ -12,6 +12,7 @@ import {
   KeyRound,
   LucideIcon,
 } from "lucide-react";
+import { apiFetch } from "@/lib/api";
 
 interface Organization {
   id: string;
@@ -37,21 +38,21 @@ function DashboardSidebarContent({ children }: { children: React.ReactNode }) {
   const [selectedOrgId, setSelectedOrgId] = useState("");
   const [loadingOrgs, setLoadingOrgs] = useState(true);
 
-  // Redirect if unauthorized
+  
   useEffect(() => {
     if (!authLoading && !user) {
       router.push("/login");
     }
   }, [user, authLoading, router]);
 
-  // Fetch user's organizations
+  
   useEffect(() => {
     if (user) {
       fetchOrganizations();
     }
   }, [user]);
 
-  // Sync selected organization ID from URL query if present
+  
   useEffect(() => {
     if (orgIdFromQuery && organizations.some((o) => o.id === orgIdFromQuery)) {
       setSelectedOrgId(orgIdFromQuery);
@@ -61,9 +62,8 @@ function DashboardSidebarContent({ children }: { children: React.ReactNode }) {
   const fetchOrganizations = async () => {
     try {
       setLoadingOrgs(true);
-      const response = await fetch("http://localhost:2000/api/organizations", {
+      const response = await apiFetch("/api/organizations", {
         method: "GET",
-        credentials: "include",
       });
       if (response.ok) {
         const data = await response.json();
@@ -107,18 +107,16 @@ function DashboardSidebarContent({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-white text-neutral-900 flex font-sans pt-16">
       
-      {/* Sidebar Navigation - Persists across all dashboard routes */}
       <aside className="w-64 border-r border-neutral-200 bg-neutral-50/50 flex flex-col justify-between shrink-0 fixed left-0 top-16 bottom-0 z-10">
         <div className="p-5">
           
-          {/* HYDRA Logo & Org Selector */}
           <div className="mb-6">
             <h2 className="text-xl font-bold tracking-tight text-neutral-900 flex items-center gap-2">
               <span className="w-6 h-6 bg-black text-white rounded flex items-center justify-center text-xs">H</span>
               HYDRA
             </h2>
 
-            {/* Organization Selector */}
+            
             <div className="mt-4">
               <label className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider block mb-1">
                 Organization
@@ -162,13 +160,13 @@ function DashboardSidebarContent({ children }: { children: React.ReactNode }) {
           </nav>
         </div>
 
-        {/* Footer info */}
+        
         <div className="p-4 border-t border-neutral-200/80 text-[11px] text-neutral-400 font-normal">
           HYDRA Webhook Relay v1.0
         </div>
       </aside>
 
-      {/* Main Content Render Area */}
+      
       <main className="flex-1 ml-64 p-8 max-w-6xl">
         {children}
       </main>

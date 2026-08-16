@@ -93,29 +93,27 @@ print(response.json()) # {"status": "ACCEPTED", "eventId": "evt_..."}`,
   return (
     <div className="min-h-screen bg-white text-neutral-900 font-sans pt-24 pb-24 overflow-hidden">
       
-      {/* Background Subtle Mesh Grid */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#f5f5f5_1px,transparent_1px),linear-gradient(to_bottom,#f5f5f5_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] -z-10 pointer-events-none" />
 
-      {/* Hero Section */}
+      
       <section className="max-w-5xl mx-auto px-6 md:px-12 text-center space-y-7 pt-6">
         
-        {/* Badge */}
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-neutral-100/90 border border-neutral-200 rounded-full text-xs font-normal text-neutral-700 backdrop-blur-sm shadow-2xs">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
           <span>Open Source Event Gateway</span>
         </div>
 
-        {/* Hero Headline */}
+        
         <h1 className="text-4xl sm:text-6xl font-medium tracking-tight text-neutral-900 leading-[1.12]">
           Event-Driven Webhook Dispatch.
         </h1>
 
-        {/* Subtitle */}
+        
         <p className="text-base sm:text-lg text-neutral-500 max-w-2xl mx-auto font-normal leading-relaxed">
           Hydra provides reliable webhook delivery infrastructure utilizing the transactional outbox pattern, Kafka for stream buffering, and BullMQ for durable fan-out dispatch.
         </p>
 
-        {/* Action Buttons */}
+        
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
           <Link
             href="/dashboard"
@@ -134,7 +132,7 @@ print(response.json()) # {"status": "ACCEPTED", "eventId": "evt_..."}`,
           </a>
         </div>
 
-        {/* Tech Stack Banner */}
+        
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto pt-10 border-t border-neutral-100">
           <div className="p-4 bg-neutral-50/60 border border-neutral-200/80 rounded-xl text-left">
             <div className="text-xl font-semibold text-neutral-900 tracking-tight">PostgreSQL</div>
@@ -156,7 +154,7 @@ print(response.json()) # {"status": "ACCEPTED", "eventId": "evt_..."}`,
 
       </section>
 
-      {/* Interactive Developer Code Preview */}
+      
       <section className="max-w-5xl mx-auto px-6 md:px-12 pt-20">
         <div className="p-6 md:p-8 bg-neutral-950 text-white rounded-2xl border border-neutral-800 shadow-2xl space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-neutral-800 pb-4">
@@ -205,7 +203,7 @@ print(response.json()) # {"status": "ACCEPTED", "eventId": "evt_..."}`,
         </div>
       </section>
 
-      {/* System Architecture Flow Section */}
+      
       <section className="max-w-5xl mx-auto px-6 md:px-12 pt-24">
         <div className="text-center max-w-xl mx-auto mb-10">
           <h2 className="text-xs font-semibold text-neutral-400 uppercase tracking-widest">Architectural Guarantees</h2>
@@ -214,7 +212,6 @@ print(response.json()) # {"status": "ACCEPTED", "eventId": "evt_..."}`,
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           
-          {/* Step 1 */}
           <div className="p-5 bg-neutral-50 border border-neutral-200 rounded-xl flex flex-col justify-between space-y-3">
             <div>
               <div className="flex items-center justify-between">
@@ -232,7 +229,7 @@ print(response.json()) # {"status": "ACCEPTED", "eventId": "evt_..."}`,
             </div>
           </div>
 
-          {/* Step 2 */}
+          
           <div className="p-5 bg-neutral-50 border border-neutral-200 rounded-xl flex flex-col justify-between space-y-3">
             <div>
               <div className="flex items-center justify-between">
@@ -250,7 +247,7 @@ print(response.json()) # {"status": "ACCEPTED", "eventId": "evt_..."}`,
             </div>
           </div>
 
-          {/* Step 3 */}
+          
           <div className="p-5 bg-neutral-50 border border-neutral-200 rounded-xl flex flex-col justify-between space-y-3">
             <div>
               <div className="flex items-center justify-between">
@@ -268,7 +265,7 @@ print(response.json()) # {"status": "ACCEPTED", "eventId": "evt_..."}`,
             </div>
           </div>
 
-          {/* Step 4 */}
+          
           <div className="p-5 bg-neutral-50 border border-neutral-200 rounded-xl flex flex-col justify-between space-y-3">
             <div>
               <div className="flex items-center justify-between">
@@ -289,7 +286,7 @@ print(response.json()) # {"status": "ACCEPTED", "eventId": "evt_..."}`,
         </div>
       </section>
 
-      {/* Infrastructure Details Grid */}
+      
       <section className="max-w-5xl mx-auto px-6 md:px-12 pt-24">
         <div className="text-center max-w-xl mx-auto mb-12">
           <h2 className="text-xs font-semibold text-neutral-400 uppercase tracking-widest">System Architecture</h2>
@@ -298,7 +295,6 @@ print(response.json()) # {"status": "ACCEPTED", "eventId": "evt_..."}`,
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           
-          {/* Feature 1 */}
           <div className="p-6 bg-neutral-50/70 border border-neutral-200/80 rounded-2xl hover:border-neutral-300 transition-all hover:shadow-xs">
             <div className="w-9 h-9 bg-black text-white rounded-lg flex items-center justify-center mb-4">
               <ShieldCheck className="w-4 h-4 text-white" />
@@ -309,7 +305,7 @@ print(response.json()) # {"status": "ACCEPTED", "eventId": "evt_..."}`,
             </p>
           </div>
 
-          {/* Feature 2 */}
+          
           <div className="p-6 bg-neutral-50/70 border border-neutral-200/80 rounded-2xl hover:border-neutral-300 transition-all hover:shadow-xs">
             <div className="w-9 h-9 bg-black text-white rounded-lg flex items-center justify-center mb-4">
               <RefreshCw className="w-4 h-4 text-white" />
@@ -320,7 +316,7 @@ print(response.json()) # {"status": "ACCEPTED", "eventId": "evt_..."}`,
             </p>
           </div>
 
-          {/* Feature 3 */}
+          
           <div className="p-6 bg-neutral-50/70 border border-neutral-200/80 rounded-2xl hover:border-neutral-300 transition-all hover:shadow-xs">
             <div className="w-9 h-9 bg-black text-white rounded-lg flex items-center justify-center mb-4">
               <AlertOctagon className="w-4 h-4 text-white" />
@@ -331,7 +327,7 @@ print(response.json()) # {"status": "ACCEPTED", "eventId": "evt_..."}`,
             </p>
           </div>
 
-          {/* Feature 4 */}
+          
           <div className="p-6 bg-neutral-50/70 border border-neutral-200/80 rounded-2xl hover:border-neutral-300 transition-all hover:shadow-xs">
             <div className="w-9 h-9 bg-black text-white rounded-lg flex items-center justify-center mb-4">
               <Lock className="w-4 h-4 text-white" />
@@ -342,7 +338,7 @@ print(response.json()) # {"status": "ACCEPTED", "eventId": "evt_..."}`,
             </p>
           </div>
 
-          {/* Feature 5 */}
+          
           <div className="p-6 bg-neutral-50/70 border border-neutral-200/80 rounded-2xl hover:border-neutral-300 transition-all hover:shadow-xs">
             <div className="w-9 h-9 bg-black text-white rounded-lg flex items-center justify-center mb-4">
               <Zap className="w-4 h-4 text-white" />
@@ -353,7 +349,7 @@ print(response.json()) # {"status": "ACCEPTED", "eventId": "evt_..."}`,
             </p>
           </div>
 
-          {/* Feature 6 */}
+          
           <div className="p-6 bg-neutral-50/70 border border-neutral-200/80 rounded-2xl hover:border-neutral-300 transition-all hover:shadow-xs">
             <div className="w-9 h-9 bg-black text-white rounded-lg flex items-center justify-center mb-4">
               <BarChart3 className="w-4 h-4 text-white" />
@@ -367,7 +363,7 @@ print(response.json()) # {"status": "ACCEPTED", "eventId": "evt_..."}`,
         </div>
       </section>
 
-      {/* Bottom CTA Banner */}
+      
       <section className="max-w-5xl mx-auto px-6 md:px-12 pt-24">
         <div className="p-8 md:p-12 bg-neutral-900 text-white rounded-3xl text-center space-y-5 border border-neutral-800 shadow-xl">
           <h2 className="text-2xl sm:text-4xl font-medium tracking-tight">Deploy your event infrastructure</h2>

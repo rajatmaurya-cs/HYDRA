@@ -28,7 +28,7 @@ export async function createEvent(req: ApiKeyRequest, res: Response) {
       return;
     }
 
-    // Rate Limiting via Redis
+    
     const rateLimitWindow = Math.floor(Date.now() / 10000);
     const rateLimitKey = `ratelimit:${organizationId}:${rateLimitWindow}`;
     
@@ -43,9 +43,9 @@ export async function createEvent(req: ApiKeyRequest, res: Response) {
       return;
     }
 
-    // Execute Transactional Outbox Pattern
+    
     const result = await prisma.$transaction(async (tx) => {
-      // 1. Check duplicate request if idempotency key is provided
+      
       if (idempotencyKey) {
         const existing = await tx.idempotencyKey.findUnique({
           where: { key: idempotencyKey },
@@ -59,7 +59,7 @@ export async function createEvent(req: ApiKeyRequest, res: Response) {
         }
       }
 
-      // 2. Create Event in DB
+      
       const event = await tx.event.create({
         data: {
           organizationId,
@@ -70,7 +70,7 @@ export async function createEvent(req: ApiKeyRequest, res: Response) {
         },
       });
 
-      // 3. Store Idempotency Key record if provided
+      
       if (idempotencyKey) {
         await tx.idempotencyKey.create({
           data: {
@@ -80,7 +80,7 @@ export async function createEvent(req: ApiKeyRequest, res: Response) {
         });
       }
 
-      // 4. Create Outbox record
+      
       await tx.outbox.create({
         data: {
           eventId: event.id,
@@ -112,7 +112,7 @@ export async function createEvent(req: ApiKeyRequest, res: Response) {
   } catch (error: any) {
     const idempotencyKey = req.headers['idempotency-key'] as string | undefined;
 
-    // Handle concurrent idempotency race condition (Prisma P2002: Unique constraint failed on key)
+    
     if (error?.code === 'P2002' && idempotencyKey) {
       try {
         const existingKey = await prisma.idempotencyKey.findUnique({
@@ -151,7 +151,7 @@ export async function getOrganizationEvents(req: AuthenticatedRequest, res: Resp
       return;
     }
 
-    // Verify user owns organization
+    
     const org = await prisma.organization.findFirst({
       where: {
         id: organizationId,
@@ -164,7 +164,7 @@ export async function getOrganizationEvents(req: AuthenticatedRequest, res: Resp
       return;
     }
 
-    // Fetch raw Event records with associated Webhook Endpoint targets
+    
     const events = await prisma.event.findMany({
       where: {
         organizationId,

@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
+import { apiFetch } from "@/lib/api";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -56,12 +57,8 @@ export default function LoginPage() {
 
     setIsLoading(true);
     try {
-      const response = await fetch("http://localhost:2000/api/auth/login", {
+      const response = await apiFetch("/api/auth/login", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
         body: JSON.stringify({
           email: formData.email,
           password: formData.password,
@@ -102,7 +99,6 @@ export default function LoginPage() {
     <div className="flex items-center justify-center min-h-screen bg-white text-black p-6 font-sans">
       <div className="w-full max-w-md bg-white border border-neutral-200 rounded-2xl p-8 md:p-10 shadow-xl">
         
-        {/* Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-black text-white font-extrabold text-xl mb-4">
             H
@@ -115,7 +111,7 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* Status Alerts */}
+        
         {status.type && (
           <div
             className={`p-3.5 mb-6 rounded-lg text-sm border font-medium ${
@@ -128,10 +124,9 @@ export default function LoginPage() {
           </div>
         )}
 
-        {/* Form */}
+        
         <form className="space-y-5" onSubmit={handleSubmit} noValidate>
           
-          {/* Email Field */}
           <div className="flex flex-col gap-1.5">
             <label htmlFor="email" className="text-[11px] font-bold text-black tracking-wider uppercase">
               Email Address
@@ -149,7 +144,7 @@ export default function LoginPage() {
             {errors.email && <span className="text-xs text-rose-600 font-medium mt-0.5">{errors.email}</span>}
           </div>
 
-          {/* Password Field */}
+          
           <div className="flex flex-col gap-1.5">
             <div className="flex justify-between items-center">
               <label htmlFor="password" className="text-[11px] font-bold text-black tracking-wider uppercase">
@@ -169,7 +164,7 @@ export default function LoginPage() {
             {errors.password && <span className="text-xs text-rose-600 font-medium mt-0.5">{errors.password}</span>}
           </div>
 
-          {/* Submit Button */}
+          
           <button
             type="submit"
             disabled={isLoading}
@@ -179,7 +174,7 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* Footer */}
+        
         <div className="text-center text-sm text-neutral-600 mt-6">
           Don't have an account?{" "}
           <Link href="/register" className="text-black font-bold hover:underline">

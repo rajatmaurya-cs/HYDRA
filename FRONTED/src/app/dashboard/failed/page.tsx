@@ -3,6 +3,7 @@
 import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { AlertOctagon, RotateCcw, RefreshCw, CheckCircle2, Eye, X } from "lucide-react";
+import { apiFetch } from "@/lib/api";
 
 interface EndpointInfo {
   id: string;
@@ -51,9 +52,7 @@ function FailedPageContent() {
   const fetchFailedDeliveries = async (targetOrgId: string) => {
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:2000/api/organizations/${targetOrgId}/logs?status=DEAD`, {
-        credentials: "include",
-      });
+      const res = await apiFetch(`/api/organizations/${targetOrgId}/logs?status=DEAD`);
       if (res.ok) {
         const data = await res.json();
         setFailedDeliveries(data.logs || []);
@@ -76,7 +75,6 @@ function FailedPageContent() {
     if (!orgId) return;
     setRetryingId(deliveryId);
 
-    // 1. Optimistic UI update: Immediately reflect "PENDING" status on the card/table
     setFailedDeliveries((prev) =>
       prev.map((item) =>
         item.id === deliveryId ? { ...item, status: "PENDING" } : item
@@ -84,12 +82,11 @@ function FailedPageContent() {
     );
 
     try {
-      const res = await fetch(`http://localhost:2000/api/organizations/${orgId}/logs/${deliveryId}/retry`, {
+      const res = await apiFetch(`/api/organizations/${orgId}/logs/${deliveryId}/retry`, {
         method: "POST",
-        credentials: "include",
       });
       if (res.ok) {
-        // 2. Wait 1.5 seconds for BullMQ execution, then refetch clean DLQ list
+        
         setTimeout(() => {
           fetchFailedDeliveries(orgId);
         }, 1500);
@@ -112,18 +109,16 @@ function FailedPageContent() {
 
     setRetryingAll(true);
 
-    // 1. Optimistic UI update: Mark all dead jobs as PENDING instantly
     setFailedDeliveries((prev) =>
       prev.map((item) => ({ ...item, status: "PENDING" }))
     );
 
     try {
-      const res = await fetch(`http://localhost:2000/api/organizations/${orgId}/logs/retry-all`, {
+      const res = await apiFetch(`/api/organizations/${orgId}/logs/retry-all`, {
         method: "POST",
-        credentials: "include",
       });
       if (res.ok) {
-        // 2. Wait 2 seconds for worker execution, then refetch updated list
+        
         setTimeout(() => {
           fetchFailedDeliveries(orgId);
         }, 2000);
@@ -142,7 +137,7 @@ function FailedPageContent() {
 
   return (
     <div className="space-y-6 font-sans">
-      {/* Header */}
+      
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-neutral-200 pb-4 mb-6">
         <div>
           <h1 className="text-2xl font-medium tracking-tight text-neutral-900 flex items-center gap-2">
@@ -207,19 +202,19 @@ function FailedPageContent() {
               <tbody className="divide-y divide-neutral-100">
                 {failedDeliveries.map((item) => (
                   <tr key={item.id} className="hover:bg-neutral-50/80 transition-colors">
-                    {/* Delivery ID */}
+                    
                     <td className="py-3.5 px-4 font-mono font-medium text-neutral-900 text-[11px] select-all">
                       {item.id}
                     </td>
 
-                    {/* Event Type */}
+                    
                     <td className="py-3.5 px-4">
                       <span className="font-mono font-semibold text-neutral-800 bg-neutral-100 border border-neutral-200 px-2 py-0.5 rounded text-[11px]">
                         {item.event.eventType}
                       </span>
                     </td>
 
-                    {/* Target Endpoint */}
+                    
                     <td className="py-3.5 px-4">
                       <span className="font-medium text-neutral-900 block">{item.endpoint.name}</span>
                       <code className="text-[10px] text-neutral-400 truncate block max-w-[180px] font-mono">
@@ -227,7 +222,7 @@ function FailedPageContent() {
                       </code>
                     </td>
 
-                    {/* Status Badge with Live Transition Feedback */}
+                    
                     <td className="py-3.5 px-4">
                       {item.status === "PENDING" ? (
                         <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200 uppercase animate-pulse">
@@ -240,22 +235,22 @@ function FailedPageContent() {
                       )}
                     </td>
 
-                    {/* Attempts */}
+                    
                     <td className="py-3.5 px-4 text-neutral-600 font-mono">
                       {item.attemptCount}
                     </td>
 
-                    {/* Error Message */}
+                    
                     <td className="py-3.5 px-4 text-rose-600 font-mono text-[11px] max-w-[200px] truncate">
                       {item.errorMessage || "Delivery Error"}
                     </td>
 
-                    {/* Timestamp */}
+                    
                     <td className="py-3.5 px-4 text-neutral-500 font-mono text-[11px]">
                       {new Date(item.createdAt).toLocaleString()}
                     </td>
 
-                    {/* Actions: Retry per job & Inspect */}
+                    
                     <td className="py-3.5 px-4 text-right">
                       <div className="flex items-center justify-end gap-1.5">
                         <button
@@ -291,7 +286,7 @@ function FailedPageContent() {
         </div>
       )}
 
-      {/* Inspect Modal */}
+      
       {selectedPayload && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-white border border-neutral-200 rounded-xl w-full max-w-lg p-6 relative shadow-xl font-normal text-xs">

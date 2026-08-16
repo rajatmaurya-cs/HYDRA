@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { apiFetch } from "@/lib/api";
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -61,11 +62,8 @@ export default function RegisterPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("http://localhost:2000/api/auth/register", {
+      const response = await apiFetch("/api/auth/register", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
         body: JSON.stringify({
           name: formData.name,
           email: formData.email,
@@ -101,7 +99,6 @@ export default function RegisterPage() {
     <div className="flex items-center justify-center min-h-screen bg-white text-black p-6 font-sans">
       <div className="w-full max-w-md bg-white border border-neutral-200 rounded-2xl p-8 md:p-10 shadow-xl">
         
-        {/* Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-black text-white font-extrabold text-xl mb-4">
             H
@@ -114,7 +111,7 @@ export default function RegisterPage() {
           </p>
         </div>
 
-        {/* Status Alerts */}
+        
         {status.type && (
           <div
             className={`p-3.5 mb-6 rounded-lg text-sm border font-medium ${
@@ -127,10 +124,9 @@ export default function RegisterPage() {
           </div>
         )}
 
-        {/* Form */}
+        
         <form className="space-y-5" onSubmit={handleSubmit} noValidate>
           
-          {/* Name Field */}
           <div className="flex flex-col gap-1.5">
             <label htmlFor="name" className="text-[11px] font-bold text-black tracking-wider uppercase">
               Full Name
@@ -148,7 +144,7 @@ export default function RegisterPage() {
             {errors.name && <span className="text-xs text-rose-600 font-medium mt-0.5">{errors.name}</span>}
           </div>
 
-          {/* Email Field */}
+          
           <div className="flex flex-col gap-1.5">
             <label htmlFor="email" className="text-[11px] font-bold text-black tracking-wider uppercase">
               Email Address
@@ -166,7 +162,7 @@ export default function RegisterPage() {
             {errors.email && <span className="text-xs text-rose-600 font-medium mt-0.5">{errors.email}</span>}
           </div>
 
-          {/* Password Field */}
+          
           <div className="flex flex-col gap-1.5">
             <label htmlFor="password" className="text-[11px] font-bold text-black tracking-wider uppercase">
               Password
@@ -184,7 +180,7 @@ export default function RegisterPage() {
             {errors.password && <span className="text-xs text-rose-600 font-medium mt-0.5">{errors.password}</span>}
           </div>
 
-          {/* Confirm Password Field */}
+          
           <div className="flex flex-col gap-1.5">
             <label htmlFor="confirmPassword" className="text-[11px] font-bold text-black tracking-wider uppercase">
               Confirm Password
@@ -204,7 +200,7 @@ export default function RegisterPage() {
             )}
           </div>
 
-          {/* Submit Button */}
+          
           <button
             type="submit"
             disabled={isLoading}
@@ -214,7 +210,7 @@ export default function RegisterPage() {
           </button>
         </form>
 
-        {/* Footer */}
+        
         <div className="text-center text-sm text-neutral-600 mt-6">
           Already have an account?{" "}
           <Link href="/login" className="text-black font-bold hover:underline">

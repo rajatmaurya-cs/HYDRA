@@ -175,7 +175,7 @@ export async function updateEndpoint(req: AuthenticatedRequest, res: Response) {
       }
     });
 
-    // Invalidate both Redis caches
+    
     await invalidateSubscriptionCache(existing.organizationId);
     
     await invalidateEndpointMetadataCache(endpointId);
@@ -214,7 +214,7 @@ export async function togglePauseEndpoint(req: AuthenticatedRequest, res: Respon
       data: { isPaused: !existing.isPaused }
     });
 
-    // Invalidate both Redis caches
+    
     await invalidateSubscriptionCache(existing.organizationId);
     await invalidateEndpointMetadataCache(endpointId);
 
@@ -247,8 +247,7 @@ export async function deleteEndpoint(req: AuthenticatedRequest, res: Response) {
       return;
     }
 
-    // Soft delete: mark endpoint status as DELETED and isPaused as true.
-    // Preserves all EventDeliveryWebhook records, parent Event states, and historical metrics.
+    
     const updated = await prisma.endpoint.update({
       where: { id: endpointId },
       data: {
@@ -257,7 +256,7 @@ export async function deleteEndpoint(req: AuthenticatedRequest, res: Response) {
       }
     });
 
-    // Invalidate Redis caches so Kafka fan-out immediately stops routing new events here
+    
     await invalidateSubscriptionCache(existing.organizationId);
     await invalidateEndpointMetadataCache(endpointId);
 

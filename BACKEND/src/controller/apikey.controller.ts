@@ -191,13 +191,13 @@ export async function rotateApiKey(req: AuthenticatedRequest, res: Response) {
       return;
     }
 
-    // 1. Revoke the old key
+    
     await prisma.apiKey.update({
       where: { id: keyId },
       data: { revoked: true }
     });
 
-    // 2. Generate a new key with identical metadata
+    
     const envString = oldKey.environment.toLowerCase();
     const secretBytes = crypto.randomBytes(32).toString('hex');
     const rawKey = `hdr_${envString}_${secretBytes}`;

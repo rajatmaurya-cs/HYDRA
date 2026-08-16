@@ -24,21 +24,21 @@ async function gracefulShutdown(signal: string) {
 
   console.log(`\n⚠️ ${signal} signal received. Starting graceful shutdown sequence...`);
 
-  // 1. Stop accepting new incoming HTTP connections
+  
   server.close(async () => {
     console.log('✅ Express HTTP server stopped taking new connections.');
 
     try {
-      // 2. Stop Outbox Relay Poller & wait for in-flight DB polling loop
+      
       await stopOutboxRelay();
 
-      // 3. Close BullMQ Worker & Disconnect Kafka Consumer & Producer
+      
       await stopBackgroundServices();
 
-      // 4. Gracefully close Redis connections
+      
       await disconnectRedis();
 
-      // 5. Disconnect Prisma PostgreSQL client
+      
       await prisma.$disconnect();
       console.log('✅ PostgreSQL Prisma client disconnected.');
 
@@ -50,7 +50,7 @@ async function gracefulShutdown(signal: string) {
     }
   });
 
-  // Force exit fallback if graceful shutdown hangs beyond 10 seconds
+  
   setTimeout(() => {
     console.error('🚨 Graceful shutdown timeout (10s) reached. Forcing process exit.');
     process.exit(1);

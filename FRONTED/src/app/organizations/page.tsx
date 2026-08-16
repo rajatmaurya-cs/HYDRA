@@ -12,6 +12,7 @@ import {
   X,
   Building,
 } from "lucide-react";
+import { apiFetch } from "@/lib/api";
 
 interface Organization {
   id: string;
@@ -57,9 +58,8 @@ export default function OrganizationsPage() {
   const fetchOrganizations = async () => {
     try {
       setLoadingOrgs(true);
-      const response = await fetch("http://localhost:2000/api/organizations", {
+      const response = await apiFetch("/api/organizations", {
         method: "GET",
-        credentials: "include",
       });
 
       if (response.ok) {
@@ -95,12 +95,8 @@ export default function OrganizationsPage() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch("http://localhost:2000/api/organizations", {
+      const response = await apiFetch("/api/organizations", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
         body: JSON.stringify({
           name,
           slug,

@@ -15,6 +15,7 @@ import {
   Link2,
   Lock,
 } from "lucide-react";
+import { apiFetch } from "@/lib/api";
 
 interface EndpointDetail {
   id: string;
@@ -43,7 +44,7 @@ export default function EndpointDetailPage({ params }: { params: Promise<{ endpo
   const [copiedSecret, setCopiedSecret] = useState(false);
   const [copiedUrl, setCopiedUrl] = useState(false);
 
-  // Pause & Delete Action States
+  
   const [isTogglingPause, setIsTogglingPause] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -64,9 +65,8 @@ export default function EndpointDetailPage({ params }: { params: Promise<{ endpo
   const fetchEndpoint = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:2000/api/endpoints/${endpointId}`, {
+      const response = await apiFetch(`/api/endpoints/${endpointId}`, {
         method: "GET",
-        credentials: "include",
       });
 
       if (response.ok) {
@@ -104,9 +104,8 @@ export default function EndpointDetailPage({ params }: { params: Promise<{ endpo
     setActionError("");
 
     try {
-      const response = await fetch(`http://localhost:2000/api/endpoints/${endpoint.id}/toggle-pause`, {
+      const response = await apiFetch(`/api/endpoints/${endpoint.id}/toggle-pause`, {
         method: "POST",
-        credentials: "include",
       });
 
       const data = await response.json();
@@ -128,9 +127,8 @@ export default function EndpointDetailPage({ params }: { params: Promise<{ endpo
     setActionError("");
 
     try {
-      const response = await fetch(`http://localhost:2000/api/endpoints/${endpoint.id}`, {
+      const response = await apiFetch(`/api/endpoints/${endpoint.id}`, {
         method: "DELETE",
-        credentials: "include",
       });
 
       if (response.ok) {
@@ -166,7 +164,6 @@ export default function EndpointDetailPage({ params }: { params: Promise<{ endpo
     <div className="min-h-screen bg-white text-neutral-900 pt-24 pb-12 px-6 md:px-12 font-sans">
       <div className="max-w-4xl mx-auto">
         
-        {/* Back Link to Dashboard Endpoints */}
         <button
           onClick={() => router.push(`/dashboard/endpoints?orgId=${endpoint.organization.id}`)}
           className="flex items-center gap-1.5 text-neutral-500 hover:text-neutral-900 transition-colors mb-5 text-xs cursor-pointer font-normal"
@@ -175,7 +172,7 @@ export default function EndpointDetailPage({ params }: { params: Promise<{ endpo
           <span>Back to Webhook Endpoints</span>
         </button>
 
-        {/* Action Notifications */}
+        
         {actionError && (
           <div className="p-3 mb-6 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center justify-between font-normal">
             <span>{actionError}</span>
@@ -185,7 +182,7 @@ export default function EndpointDetailPage({ params }: { params: Promise<{ endpo
           </div>
         )}
 
-        {/* Deleted Endpoint Alert Banner */}
+        
         {isDeleted && (
           <div className="p-4 mb-6 rounded-xl bg-neutral-100 border border-neutral-200 text-neutral-800 text-xs font-normal flex items-center gap-2.5 shadow-2xs">
             <AlertTriangle className="w-4 h-4 text-neutral-600 shrink-0" />
@@ -195,7 +192,7 @@ export default function EndpointDetailPage({ params }: { params: Promise<{ endpo
           </div>
         )}
 
-        {/* Endpoint Header & Controls */}
+        
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-neutral-200/80 pb-5 mb-8">
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -228,7 +225,7 @@ export default function EndpointDetailPage({ params }: { params: Promise<{ endpo
             )}
           </div>
 
-          {/* Quick Header Actions */}
+          
           {!isDeleted ? (
             <div className="flex items-center gap-2 self-start sm:self-auto">
               <button
@@ -269,10 +266,10 @@ export default function EndpointDetailPage({ params }: { params: Promise<{ endpo
           )}
         </div>
 
-        {/* Detailed Information Cards */}
+        
         <div className="space-y-6">
 
-          {/* Webhook URL Card */}
+          
           <div className="p-6 bg-white border border-neutral-200 rounded-xl shadow-2xs">
             <h2 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
               <Link2 className="w-3.5 h-3.5 text-neutral-500" />
@@ -292,7 +289,7 @@ export default function EndpointDetailPage({ params }: { params: Promise<{ endpo
             </div>
           </div>
 
-          {/* Webhook Secret Card */}
+          
           <div className="p-6 bg-white border border-neutral-200 rounded-xl shadow-2xs">
             <h2 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
               <Lock className="w-3.5 h-3.5 text-neutral-500" />
@@ -315,7 +312,7 @@ export default function EndpointDetailPage({ params }: { params: Promise<{ endpo
             </div>
           </div>
 
-          {/* Subscribed Events Card */}
+          
           <div className="p-6 bg-white border border-neutral-200 rounded-xl shadow-2xs">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">
@@ -340,13 +337,13 @@ export default function EndpointDetailPage({ params }: { params: Promise<{ endpo
             )}
           </div>
 
-          {/* Metadata Info */}
+          
           <div className="p-4 bg-neutral-50/50 border border-neutral-200/80 rounded-xl flex items-center justify-between text-xs text-neutral-500 font-normal">
             <span>Endpoint ID: <code className="font-mono text-neutral-700">{endpoint.id}</code></span>
             <span>Created {new Date(endpoint.createdAt).toLocaleString()}</span>
           </div>
 
-          {/* Danger Zone Card */}
+          
           {!isDeleted && (
             <div className="p-6 bg-rose-50/30 border border-rose-200 rounded-xl">
               <h2 className="text-xs font-semibold text-rose-700 uppercase tracking-wider mb-1 flex items-center gap-1.5">
@@ -370,7 +367,7 @@ export default function EndpointDetailPage({ params }: { params: Promise<{ endpo
 
       </div>
 
-      {/* Delete Confirmation Modal */}
+      
       {showDeleteModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-white border border-neutral-200 rounded-2xl w-full max-w-md p-6 relative shadow-2xl space-y-4">

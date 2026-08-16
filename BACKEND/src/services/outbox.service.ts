@@ -113,7 +113,7 @@ export async function processOutboxEvents() {
         }
       });
 
-      // 🟢 Bulk update for successful sends in the chunk
+      
       if (successfulEntries.length > 0) {
         const outboxIds = successfulEntries.map((e) => e.id);
         const eventIds = successfulEntries.map((e) => e.event.id);
@@ -139,7 +139,7 @@ export async function processOutboxEvents() {
         );
       }
 
-      // 🔴 Targeted handling for failed sends in the chunk
+      
       for (const { entry, error } of failedEntries) {
         const nextRetryCount = entry.retryCount + 1;
         const isMaxRetriesExhausted = nextRetryCount >= MAX_OUTBOX_RETRIES;
@@ -197,6 +197,8 @@ export async function replayDeadOutboxEvents(eventId?: string) {
   return updated.count;
 }
 
+
+
 let relayIntervalId: NodeJS.Timeout | null = null;
 
 export function startOutboxRelay() {
@@ -217,7 +219,7 @@ export async function stopOutboxRelay(): Promise<void> {
     console.log('🛑 Outbox Relay polling interval stopped.');
   }
 
-  // Wait for any active processOutboxEvents loop to finish execution (max 5 seconds timeout)
+  
   let waitCount = 0;
   while (isRelayRunning && waitCount < 20) {
     await new Promise((resolve) => setTimeout(resolve, 250));

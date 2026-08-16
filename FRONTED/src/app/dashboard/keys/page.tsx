@@ -3,6 +3,7 @@
 import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { KeyRound, Plus, Copy, RotateCcw, Trash2, X, Check } from "lucide-react";
+import { apiFetch } from "@/lib/api";
 
 interface ApiKey {
   id: string;
@@ -21,11 +22,11 @@ function ApiKeysPageContent() {
   const [loading, setLoading] = useState(true);
   const [copiedKeyId, setCopiedKeyId] = useState<string | null>(null);
 
-  // Modal State
+  
   const [showKeyModal, setShowKeyModal] = useState(false);
   const [keyName, setKeyName] = useState("");
-  const [keyEnv, setKeyEnv] = useState("TEST");
-  const [generatedKey, setGeneratedKey] = useState("");
+  const [keyEnv, setKeyEnv] = useState("PRODUCTION");
+  const [generatedKey, setGeneratedKey] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -38,9 +39,7 @@ function ApiKeysPageContent() {
   const fetchApiKeys = async (targetOrgId: string) => {
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:2000/api/api-keys?organizationId=${targetOrgId}`, {
-        credentials: "include",
-      });
+      const res = await apiFetch(`/api/api-keys?organizationId=${targetOrgId}`);
       if (res.ok) {
         const data = await res.json();
         setApiKeys(data.apiKeys || []);
@@ -63,10 +62,8 @@ function ApiKeysPageContent() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch("http://localhost:2000/api/api-keys", {
+      const response = await apiFetch("/api/api-keys", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({
           organizationId: orgId,
           name: keyName,
@@ -92,9 +89,8 @@ function ApiKeysPageContent() {
   const handleRevokeKey = async (keyId: string) => {
     if (!confirm("Are you sure you want to revoke this API Key?")) return;
     try {
-      const res = await fetch(`http://localhost:2000/api/api-keys/${keyId}/revoke`, {
+      const res = await apiFetch(`/api/api-keys/${keyId}/revoke`, {
         method: "PATCH",
-        credentials: "include",
       });
       if (res.ok) {
         setApiKeys((prev) => prev.map((k) => (k.id === keyId ? { ...k, revoked: true } : k)));
@@ -107,9 +103,8 @@ function ApiKeysPageContent() {
   const handleRotateKey = async (keyId: string) => {
     if (!confirm("Are you sure you want to rotate this API Key? The current key will be revoked.")) return;
     try {
-      const res = await fetch(`http://localhost:2000/api/api-keys/${keyId}/rotate`, {
+      const res = await apiFetch(`/api/api-keys/${keyId}/rotate`, {
         method: "POST",
-        credentials: "include",
       });
       const data = await res.json();
       if (res.ok) {
@@ -129,7 +124,7 @@ function ApiKeysPageContent() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      
       <div className="flex items-center justify-between border-b border-neutral-200 pb-4 mb-6">
         <div>
           <h1 className="text-2xl font-medium tracking-tight text-neutral-900 flex items-center gap-2">
@@ -238,7 +233,7 @@ function ApiKeysPageContent() {
         </div>
       )}
 
-      {/* Generate API Key Modal */}
+      
       {showKeyModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-white border border-neutral-200 rounded-xl w-full max-w-md p-6 relative shadow-xl text-xs font-normal">

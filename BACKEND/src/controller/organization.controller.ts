@@ -181,14 +181,14 @@ export async function getOrganizationMetrics(req: AuthenticatedRequest, res: Res
       return;
     }
 
-    // 1. Total Raw Events ingested for this organization
+    
     const eventsIngested = await prisma.event.count({
       where: {
         organizationId: orgId,
       }
     });
 
-    // 2. Total Endpoint Deliveries created
+    
     const totalDeliveries = await prisma.eventDeliveryWebhook.count({
       where: {
         event: {
@@ -197,7 +197,7 @@ export async function getOrganizationMetrics(req: AuthenticatedRequest, res: Res
       }
     });
 
-    // 3. Successful Deliveries
+    
     const successfulDeliveries = await prisma.eventDeliveryWebhook.count({
       where: {
         event: {
@@ -207,7 +207,7 @@ export async function getOrganizationMetrics(req: AuthenticatedRequest, res: Res
       }
     });
 
-    // 4. Failed / Dead Deliveries
+    
     const failedDeadDeliveries = await prisma.eventDeliveryWebhook.count({
       where: {
         event: {
@@ -217,12 +217,12 @@ export async function getOrganizationMetrics(req: AuthenticatedRequest, res: Res
       }
     });
 
-    // 5. Success Rate percentage (Successful Deliveries / Total Deliveries)
+    
     const successRate = totalDeliveries > 0 
       ? Number(((successfulDeliveries / totalDeliveries) * 100).toFixed(1))
       : 100;
 
-    // 6. Average & P95 Latency Calculation
+    
     const latencyRecords = await prisma.eventDeliveryWebhook.findMany({
       where: {
         event: {
@@ -248,12 +248,12 @@ export async function getOrganizationMetrics(req: AuthenticatedRequest, res: Res
       const totalLatency = latencies.reduce((sum, val) => sum + val, 0);
       avgLatencyMs = Math.round(totalLatency / latencies.length);
 
-      // P95 index calculation: 95th percentile
+      
       const p95Index = Math.floor(latencies.length * 0.95);
       p95LatencyMs = latencies[Math.min(p95Index, latencies.length - 1)];
     }
 
-    // 7. Recent 10 Failed Deliveries
+    
     const recentFailedJobs = await prisma.eventDeliveryWebhook.findMany({
       where: {
         event: {
@@ -316,7 +316,7 @@ export async function getOrganizationDeliveryLogs(req: AuthenticatedRequest, res
       return;
     }
 
-    // Verify user owns organization
+    
     const org = await prisma.organization.findFirst({
       where: {
         id: orgId,
@@ -329,7 +329,7 @@ export async function getOrganizationDeliveryLogs(req: AuthenticatedRequest, res
       return;
     }
 
-    // Build filter condition
+    
     const whereCondition: any = {
       event: {
         organizationId: orgId,
@@ -340,7 +340,7 @@ export async function getOrganizationDeliveryLogs(req: AuthenticatedRequest, res
       whereCondition.status = statusQuery;
     }
 
-    // Fetch EventDeliveryWebhook records with related Event and Endpoint metadata
+    
     const logs = await prisma.eventDeliveryWebhook.findMany({
       where: whereCondition,
       take: 100,
@@ -397,7 +397,7 @@ export async function retrySingleDeadDelivery(req: AuthenticatedRequest, res: Re
       return;
     }
 
-    // Verify user owns organization
+    
     const org = await prisma.organization.findFirst({
       where: {
         id: orgId,
@@ -439,7 +439,7 @@ export async function retryAllDeadDeliveriesForOrg(req: AuthenticatedRequest, re
       return;
     }
 
-    // Verify user owns organization
+    
     const org = await prisma.organization.findFirst({
       where: {
         id: orgId,
