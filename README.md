@@ -19,7 +19,7 @@
       display: inline-flex;
       align-items: center;
       gap: 8px;
-    "><img src="./Url%20Link.svg" width="22" height="22" align="absmiddle" alt="Live Link" /> https://hydra-phi-three.vercel.app — Open Live Site</code>
+    "><img src="./Link.svg" width="50" height="50" align="absmiddle" alt="Live Link" /> https://hydra-phi-three.vercel.app — Open Live Site</code>
   </a>
 </p>
 
