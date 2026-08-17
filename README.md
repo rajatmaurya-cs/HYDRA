@@ -8,20 +8,13 @@
 
 <p align="center">
   <a href="https://hydra-phi-three.vercel.app" target="_blank" style="text-decoration:none;">
-    <code style="
-      background: #0d1117;
-      color: #58a6ff;
-      padding: 10px 20px;
-      border-radius: 6px;
-      border: 1px solid #30363d;
-      font-size: 15px;
-      box-shadow: 0 0 20px rgba(88, 166, 255, 0.3);
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-    "><img src="./Link.svg" width="50" height="50" align="absmiddle" alt="Live Link" /> https://hydra-phi-three.vercel.app — Open Live Site</code>
+    <img src="./Link.svg" width="36" height="36" align="absmiddle" alt="Live Link" />
+    <span style="font-size: 16px; font-weight: 600; vertical-align: middle; color: #58a6ff;">&nbsp;https://hydra-phi-three.vercel.app — Open Live Site</span>
   </a>
 </p>
+
+
+
 
 <br/>
 
