@@ -35,10 +35,13 @@ export async function createApiKey(req: AuthenticatedRequest, res: Response) {
     }
 
     const envString = environment.toLowerCase();
+
     const secretBytes = crypto.randomBytes(32).toString('hex');
+
     const rawKey = `hdr_${envString}_${secretBytes}`;
 
     const prefix = rawKey;
+    
     const hashedKey = crypto.createHash('sha256').update(rawKey).digest('hex');
 
     const apiKey = await prisma.apiKey.create({

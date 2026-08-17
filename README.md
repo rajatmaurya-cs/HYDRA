@@ -4,7 +4,26 @@
 
 **High-Throughput, Fault-Tolerant Webhook Delivery Infrastructure & Event Gateway**
 
-[![Live Demo](https://img.shields.io/badge/Live_App-https%3A%2F%2Fhydra--phi--three.vercel.app-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://hydra-phi-three.vercel.app)
+<br/>
+
+<p align="center">
+  <a href="https://hydra-phi-three.vercel.app" target="_blank" style="text-decoration:none;">
+    <code style="
+      background: #0d1117;
+      color: #58a6ff;
+      padding: 10px 20px;
+      border-radius: 6px;
+      border: 1px solid #30363d;
+      font-size: 15px;
+      box-shadow: 0 0 20px rgba(88, 166, 255, 0.3);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    "><img src="./Url%20Link.svg" width="22" height="22" align="absmiddle" alt="Live Link" /> https://hydra-phi-three.vercel.app — Open Live Site</code>
+  </a>
+</p>
+
+<br/>
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-18+-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org/)
@@ -14,9 +33,9 @@
 [![Redis](https://img.shields.io/badge/Redis-BullMQ-DC382D?style=flat-square&logo=redis&logoColor=white)](https://redis.io/)
 [![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg?style=flat-square)](https://opensource.org/licenses/ISC)
 
-<p align="center">
-  🌐 <strong>Live Application:</strong> <a href="https://hydra-phi-three.vercel.app">https://hydra-phi-three.vercel.app</a>
-</p>
+<br/>
+
+
 
 <p align="center">
   <a href="#-architecture">Architecture</a> •
