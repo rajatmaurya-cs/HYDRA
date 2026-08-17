@@ -6,22 +6,20 @@
 
 <br/>
 
-
-
 <p align="center">
-  <a href="https://hydra-phi-three.vercel.app" target="_blank" rel="noopener noreferrer" style="text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:8px;">
-    <img
+  <a href="https://hydra-phi-three.vercel.app" target="_blank" style="text-decoration:none; font-size:0; line-height:0; display:inline-flex; align-items:center; gap:8px;"><img
       src="https://img.shields.io/badge/Live-Demo-0A66C2?style=for-the-badge&logo=vercel&logoColor=white"
       alt="Live Demo"
       style="height:36px; display:block;"
-    />
-    <img 
+    /><img 
       src="./externalLink.svg" 
       alt="Live Link" 
       style="height:43px; width:45px; display:block;"
-    />
-  </a>
+    /></a>
 </p>
+
+
+
 
 
 
