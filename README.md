@@ -2,7 +2,9 @@
 
 #  HYDRA — Resilient Webhook Delivery Platform
 
-**High-Throughput, Fault-Tolerant Webhook Delivery Infrastructure & Event Gateway**
+**High-Throughput, Fault-Tolerant Webhook Delivery Platform**
+
+
 
 <br/>
 
