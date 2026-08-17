@@ -6,10 +6,22 @@
 
 <br/>
 
+
+
 <p align="center">
-  <a href="https://hydra-phi-three.vercel.app" target="_blank" style="text-decoration:none;">
-    <img src="./Link.svg" width="36" height="36" align="absmiddle" alt="Live Link" />
-    <span style="font-size: 16px; font-weight: 600; vertical-align: middle; color: #58a6ff;">&nbsp;https://hydra-phi-three.vercel.app — Open Live Site</span>
+  <a href="https://hydra-phi-three.vercel.app" target="_blank" rel="noopener noreferrer" style="text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:8px;">
+    <img
+      src="https://img.shields.io/badge/Live-Demo-0A66C2?style=flat-square&logo=vercel&logoColor=white"
+      alt="Live Demo"
+      style="display:block;"
+    />
+    <img 
+      src="./externalLink.svg" 
+      width="30" 
+      height="30" 
+      alt="Live Link" 
+      style="display:block;"
+    />
   </a>
 </p>
 
