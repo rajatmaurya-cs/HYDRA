@@ -76,52 +76,51 @@ export default function Navbar() {
             </span>
           </Link>
 
-          {/* Navigation Links */}
-          <nav className="hidden md:flex items-center gap-1">
-            <Link
-              href="/docs"
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs transition-colors ${
-                pathname.startsWith("/docs")
-                  ? "text-neutral-950 font-medium bg-neutral-100"
-                  : "text-neutral-600 hover:text-neutral-950 hover:bg-neutral-50 font-normal"
-              }`}
-            >
-              <BookOpen className="w-3.5 h-3.5" />
-              <span>Docs</span>
-            </Link>
+          {/* Navigation Links (Core Workspaces) */}
+          {user && (
+            <nav className="hidden md:flex items-center gap-1">
+              <Link
+                href="/organizations"
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs transition-colors ${
+                  pathname.startsWith("/organizations")
+                    ? "text-neutral-950 font-medium bg-neutral-100"
+                    : "text-neutral-600 hover:text-neutral-950 hover:bg-neutral-50 font-normal"
+                }`}
+              >
+                <Building2 className="w-3.5 h-3.5" />
+                <span>Organizations</span>
+              </Link>
 
-            {user && (
-              <>
-                <Link
-                  href="/organizations"
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs transition-colors ${
-                    pathname.startsWith("/organizations")
-                      ? "text-neutral-950 font-medium bg-neutral-100"
-                      : "text-neutral-600 hover:text-neutral-950 hover:bg-neutral-50 font-normal"
-                  }`}
-                >
-                  <Building2 className="w-3.5 h-3.5" />
-                  <span>Organizations</span>
-                </Link>
-
-                <Link
-                  href="/dashboard"
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs transition-colors ${
-                    pathname.startsWith("/dashboard")
-                      ? "text-neutral-950 font-medium bg-neutral-100"
-                      : "text-neutral-600 hover:text-neutral-950 hover:bg-neutral-50 font-normal"
-                  }`}
-                >
-                  <LayoutDashboard className="w-3.5 h-3.5" />
-                  <span>Dashboard</span>
-                </Link>
-              </>
-            )}
-          </nav>
+              <Link
+                href="/dashboard"
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs transition-colors ${
+                  pathname.startsWith("/dashboard")
+                    ? "text-neutral-950 font-medium bg-neutral-100"
+                    : "text-neutral-600 hover:text-neutral-950 hover:bg-neutral-50 font-normal"
+                }`}
+              >
+                <LayoutDashboard className="w-3.5 h-3.5" />
+                <span>Dashboard</span>
+              </Link>
+            </nav>
+          )}
         </div>
 
-        {/* Right: Auth Controls */}
-        <div className="flex items-center gap-3">
+        {/* Right: Docs Link & Auth Controls */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Docs Link on Right Utility Bar */}
+          <Link
+            href="/docs"
+            className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs transition-colors ${
+              pathname.startsWith("/docs")
+                ? "text-neutral-950 font-medium bg-neutral-100"
+                : "text-neutral-600 hover:text-neutral-950 hover:bg-neutral-50 font-normal"
+            }`}
+          >
+            <BookOpen className="w-3.5 h-3.5 text-neutral-500" />
+            <span>Docs</span>
+          </Link>
+
           {isLoading ? (
             <div className="w-4 h-4 border-2 border-neutral-300 border-t-black rounded-full animate-spin" />
           ) : user ? (
@@ -175,6 +174,14 @@ export default function Navbar() {
                       <LayoutDashboard className="w-3.5 h-3.5 text-neutral-400" />
                       <span>Dashboard</span>
                     </Link>
+                    <Link
+                      href="/docs"
+                      onClick={() => setUserDropdownOpen(false)}
+                      className="flex items-center gap-2 px-3.5 py-2 text-xs text-neutral-700 hover:text-black hover:bg-neutral-50 transition-colors"
+                    >
+                      <BookOpen className="w-3.5 h-3.5 text-neutral-400" />
+                      <span>Documentation</span>
+                    </Link>
                   </div>
 
                   <div className="pt-1 border-t border-neutral-100">
@@ -213,38 +220,48 @@ export default function Navbar() {
           )}
 
           {/* Mobile Hamburger Toggle */}
-          {user && (
-            <button
-              type="button"
-              onClick={() => setMobileMenuOpen((prev) => !prev)}
-              className="md:hidden p-1.5 text-neutral-600 hover:text-black rounded-md"
-            >
-              {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen((prev) => !prev)}
+            className="sm:hidden p-1.5 text-neutral-600 hover:text-black rounded-md cursor-pointer"
+          >
+            {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+          </button>
         </div>
 
       </div>
 
       {/* Mobile Drawer */}
-      {mobileMenuOpen && user && (
-        <div className="md:hidden border-t border-neutral-200 bg-white px-6 py-3 space-y-1">
+      {mobileMenuOpen && (
+        <div className="sm:hidden border-t border-neutral-200 bg-white px-6 py-3 space-y-1">
           <Link
-            href="/organizations"
+            href="/docs"
             onClick={() => setMobileMenuOpen(false)}
             className="flex items-center gap-2 px-3 py-2 text-xs text-neutral-700 hover:bg-neutral-50 rounded-md font-medium"
           >
-            <Building2 className="w-4 h-4 text-neutral-400" />
-            <span>Organizations</span>
+            <BookOpen className="w-4 h-4 text-neutral-400" />
+            <span>Docs</span>
           </Link>
-          <Link
-            href="/dashboard"
-            onClick={() => setMobileMenuOpen(false)}
-            className="flex items-center gap-2 px-3 py-2 text-xs text-neutral-700 hover:bg-neutral-50 rounded-md font-medium"
-          >
-            <LayoutDashboard className="w-4 h-4 text-neutral-400" />
-            <span>Dashboard</span>
-          </Link>
+          {user && (
+            <>
+              <Link
+                href="/organizations"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-2 px-3 py-2 text-xs text-neutral-700 hover:bg-neutral-50 rounded-md font-medium"
+              >
+                <Building2 className="w-4 h-4 text-neutral-400" />
+                <span>Organizations</span>
+              </Link>
+              <Link
+                href="/dashboard"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-2 px-3 py-2 text-xs text-neutral-700 hover:bg-neutral-50 rounded-md font-medium"
+              >
+                <LayoutDashboard className="w-4 h-4 text-neutral-400" />
+                <span>Dashboard</span>
+              </Link>
+            </>
+          )}
         </div>
       )}
     </header>
