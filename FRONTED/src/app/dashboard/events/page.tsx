@@ -39,6 +39,8 @@ function EventsPageContent() {
   useEffect(() => {
     if (orgId) {
       fetchEvents(orgId);
+    } else {
+      setLoading(false);
     }
   }, [orgId]);
 

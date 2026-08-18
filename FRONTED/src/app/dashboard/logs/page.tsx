@@ -46,6 +46,8 @@ function LogsPageContent() {
   useEffect(() => {
     if (orgId) {
       fetchLogs(orgId, statusFilter);
+    } else {
+      setLoading(false);
     }
   }, [orgId, statusFilter]);
 

@@ -33,6 +33,8 @@ function ApiKeysPageContent() {
   useEffect(() => {
     if (orgId) {
       fetchApiKeys(orgId);
+    } else {
+      setLoading(false);
     }
   }, [orgId]);
 

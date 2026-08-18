@@ -46,6 +46,8 @@ function FailedPageContent() {
   useEffect(() => {
     if (orgId) {
       fetchFailedDeliveries(orgId);
+    } else {
+      setLoading(false);
     }
   }, [orgId]);
 

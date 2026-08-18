@@ -104,6 +104,32 @@ function DashboardSidebarContent({ children }: { children: React.ReactNode }) {
     );
   }
 
+  if (!loadingOrgs && organizations.length === 0) {
+    return (
+      <div className="min-h-screen bg-white text-neutral-900 flex items-center justify-center p-6 font-sans pt-16">
+        <div className="max-w-md w-full text-center p-8 bg-neutral-50/70 border border-neutral-200 rounded-2xl shadow-xs space-y-4">
+          <div className="w-12 h-12 rounded-xl bg-black text-white flex items-center justify-center font-bold text-base mx-auto shadow-2xs">
+            H
+          </div>
+          <h2 className="text-lg font-semibold text-neutral-900 tracking-tight">
+            Create Your First Organization
+          </h2>
+          <p className="text-xs text-neutral-500 leading-relaxed font-normal">
+            You don't have any organizations yet. Create an organization workspace to configure webhook endpoints, generate API keys, and monitor event deliveries.
+          </p>
+          <div className="pt-2">
+            <button
+              onClick={() => router.push("/organizations")}
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-black hover:bg-neutral-800 text-white rounded-lg text-xs font-medium transition-all shadow-2xs cursor-pointer"
+            >
+              <span>Go to Organizations</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-white text-neutral-900 flex font-sans pt-16">
       

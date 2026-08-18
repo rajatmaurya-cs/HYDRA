@@ -52,6 +52,8 @@ function OverviewPageContent() {
   useEffect(() => {
     if (orgId) {
       fetchMetrics(orgId);
+    } else {
+      setLoading(false);
     }
   }, [orgId]);
 
@@ -70,10 +72,29 @@ function OverviewPageContent() {
     }
   };
 
-  if (loading || !metrics) {
+  if (loading) {
     return (
       <div className="flex justify-center py-16">
         <div className="w-6 h-6 border-2 border-neutral-300 border-t-black rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!orgId || !metrics) {
+    return (
+      <div className="text-center py-16 bg-neutral-50/50 border border-neutral-200/80 rounded-xl p-8 max-w-lg mx-auto mt-8 space-y-3">
+        <Inbox className="w-8 h-8 text-neutral-400 mx-auto" />
+        <h3 className="text-sm font-medium text-neutral-900">No Organization Selected</h3>
+        <p className="text-xs text-neutral-500 font-normal">
+          Please select or create an organization to view your webhook metrics.
+        </p>
+        <button
+          onClick={() => router.push("/organizations")}
+          className="px-4 py-2 bg-black text-white text-xs font-normal rounded-md hover:bg-neutral-800 transition-all cursor-pointer inline-flex items-center gap-1.5"
+        >
+          <span>Go to Organizations</span>
+          <ArrowRight className="w-3.5 h-3.5" />
+        </button>
       </div>
     );
   }

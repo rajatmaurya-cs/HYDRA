@@ -37,6 +37,8 @@ function EndpointsPageContent() {
   useEffect(() => {
     if (orgId) {
       fetchEndpoints(orgId);
+    } else {
+      setLoading(false);
     }
   }, [orgId]);
 
