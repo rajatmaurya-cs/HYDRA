@@ -411,6 +411,7 @@ HYDRA/
 
 ## 👨‍💻 Author
 **Rajat Maurya**
+- **Portfolio**: [https://rajatmaurya-dev.vercel.app/](https://rajatmaurya-dev.vercel.app/)
 - **Live App**: [https://hydra-phi-three.vercel.app](https://hydra-phi-three.vercel.app)
 - **Email**: [rajatmaurya.dev@gmail.com](mailto:rajatmaurya.dev@gmail.com)
 - **GitHub**: [@rajatmaurya-cs](https://github.com/rajatmaurya-cs)

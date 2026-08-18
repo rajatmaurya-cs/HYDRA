@@ -26,7 +26,7 @@ export default function Home() {
   const [copiedCode, setCopiedCode] = useState(false);
 
   const codeSnippets = {
-    curl: `curl -X POST http://Hydra/v1/events \\
+    curl: `curl -X POST https://hydra-66dk.onrender.com/v1/events \\
   -H "Authorization: Bearer hdr_live_9b4e8...7f2" \\
   -H "Idempotency-Key: evt_order_998124" \\
   -H "Content-Type: application/json" \\
@@ -40,7 +40,7 @@ export default function Home() {
     }
   }'`,
     node: `// Direct native fetch (Node.js 18+ / TypeScript / Next.js)
-const response = await fetch("http://Hydra/v1/events", {
+const response = await fetch("https://hydra-66dk.onrender.com/v1/events", {
   method: "POST",
   headers: {
     "Authorization": \`Bearer \${process.env.HYDRA_API_KEY}\`,
@@ -65,7 +65,7 @@ import requests
 import os
 
 response = requests.post(
-    "http://Hydra/v1/events",
+    "https://hydra-66dk.onrender.com/v1/events",
     headers={
         "Authorization": f"Bearer {os.environ.get('HYDRA_API_KEY')}",
         "Idempotency-Key": "evt_order_998124",

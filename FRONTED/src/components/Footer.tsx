@@ -52,6 +52,7 @@ export default function Footer() {
   const [copiedEmail, setCopiedEmail] = useState(false);
 
   const email = "rajatmaurya.dev@gmail.com";
+  const portfolioUrl = "https://rajatmaurya-dev.vercel.app/";
   const githubUrl = "https://github.com/rajatmaurya-cs";
   const linkedinUrl = "https://www.linkedin.com/in/rajat-maurya-3a172331b/";
   const repoUrl = "https://github.com/rajatmaurya-cs/HYDRA";
@@ -116,32 +117,32 @@ export default function Footer() {
             </h4>
             <ul className="space-y-2 text-xs font-normal text-neutral-600">
               <li>
-                <Link href="/dashboard" className="hover:text-black transition-colors">
+                <Link href="/docs?topic=ingress" className="hover:text-black transition-colors">
                   Event Ingress & Delivery
                 </Link>
               </li>
               <li>
-                <Link href="/dashboard/endpoints" className="hover:text-black transition-colors">
+                <Link href="/docs?topic=endpoints" className="hover:text-black transition-colors">
                   Webhook Endpoints
                 </Link>
               </li>
               <li>
-                <Link href="/dashboard/failed" className="hover:text-black transition-colors">
+                <Link href="/docs?topic=dlq" className="hover:text-black transition-colors">
                   Dead Letter Queues (DLQ)
                 </Link>
               </li>
               <li>
-                <Link href="/dashboard/keys" className="hover:text-black transition-colors">
+                <Link href="/docs?topic=keys" className="hover:text-black transition-colors">
                   API Key Management
                 </Link>
               </li>
               <li>
-                <Link href="/dashboard/logs" className="hover:text-black transition-colors">
+                <Link href="/docs?topic=logs" className="hover:text-black transition-colors">
                   Observability & Logs
                 </Link>
               </li>
               <li>
-                <Link href="/organizations" className="hover:text-black transition-colors">
+                <Link href="/docs?topic=workspaces" className="hover:text-black transition-colors">
                   Multi-tenant Workspaces
                 </Link>
               </li>
@@ -158,7 +159,7 @@ export default function Footer() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-semibold text-neutral-900">Rajat Maurya</p>
-                  <p className="text-[11px] text-neutral-500 font-normal">Backend Engineer </p>
+                  <p className="text-[11px] text-neutral-500 font-normal">Backend Engineer</p>
                 </div>
                 <div className="w-8 h-8 rounded-full bg-neutral-900 text-white flex items-center justify-center text-xs font-bold shadow-2xs">
                   RM
@@ -187,7 +188,18 @@ export default function Footer() {
                 </button>
               </div>
 
-              
+              {/* Portfolio Link Button */}
+              <a
+                href={portfolioUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg bg-neutral-900 text-white text-xs hover:bg-neutral-800 transition-all font-medium shadow-2xs"
+              >
+                <span>Portfolio Website</span>
+                <ArrowUpRight className="w-3 h-3 text-neutral-400" />
+              </a>
+
+              {/* GitHub & LinkedIn Grid */}
               <div className="grid grid-cols-2 gap-2">
                 <a
                   href={githubUrl}

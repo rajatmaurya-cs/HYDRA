@@ -12,6 +12,7 @@ import {
   Menu,
   X,
   User as UserIcon,
+  BookOpen,
 } from "lucide-react";
 
 export default function Navbar() {
@@ -29,23 +30,27 @@ export default function Navbar() {
   }, [pathname]);
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
         setUserDropdownOpen(false);
       }
-    };
-
-    if (userDropdownOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
     }
+    document.addEventListener("mousedown", handleClickOutside);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [userDropdownOpen]);
+  }, []);
 
-  const getUserInitials = (name?: string, email?: string): string => {
+  const getUserInitials = (name?: string, email?: string) => {
     if (name && name.trim().length > 0) {
-      return name.slice(0, 2).toUpperCase();
+      const parts = name.trim().split(" ");
+      if (parts.length >= 2) {
+        return (parts[0][0] + parts[1][0]).toUpperCase();
+      }
+      return parts[0].slice(0, 2).toUpperCase();
     }
     if (email && email.trim().length > 0) {
       return email.slice(0, 2).toUpperCase();
@@ -72,33 +77,47 @@ export default function Navbar() {
           </Link>
 
           {/* Navigation Links */}
-          {user && (
-            <nav className="hidden md:flex items-center gap-1">
-              <Link
-                href="/organizations"
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs transition-colors ${
-                  pathname.startsWith("/organizations")
-                    ? "text-neutral-950 font-medium bg-neutral-100"
-                    : "text-neutral-600 hover:text-neutral-950 hover:bg-neutral-50 font-normal"
-                }`}
-              >
-                <Building2 className="w-3.5 h-3.5" />
-                <span>Organizations</span>
-              </Link>
+          <nav className="hidden md:flex items-center gap-1">
+            <Link
+              href="/docs"
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs transition-colors ${
+                pathname.startsWith("/docs")
+                  ? "text-neutral-950 font-medium bg-neutral-100"
+                  : "text-neutral-600 hover:text-neutral-950 hover:bg-neutral-50 font-normal"
+              }`}
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>Docs</span>
+            </Link>
 
-              <Link
-                href="/dashboard"
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs transition-colors ${
-                  pathname.startsWith("/dashboard")
-                    ? "text-neutral-950 font-medium bg-neutral-100"
-                    : "text-neutral-600 hover:text-neutral-950 hover:bg-neutral-50 font-normal"
-                }`}
-              >
-                <LayoutDashboard className="w-3.5 h-3.5" />
-                <span>Dashboard</span>
-              </Link>
-            </nav>
-          )}
+            {user && (
+              <>
+                <Link
+                  href="/organizations"
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs transition-colors ${
+                    pathname.startsWith("/organizations")
+                      ? "text-neutral-950 font-medium bg-neutral-100"
+                      : "text-neutral-600 hover:text-neutral-950 hover:bg-neutral-50 font-normal"
+                  }`}
+                >
+                  <Building2 className="w-3.5 h-3.5" />
+                  <span>Organizations</span>
+                </Link>
+
+                <Link
+                  href="/dashboard"
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs transition-colors ${
+                    pathname.startsWith("/dashboard")
+                      ? "text-neutral-950 font-medium bg-neutral-100"
+                      : "text-neutral-600 hover:text-neutral-950 hover:bg-neutral-50 font-normal"
+                  }`}
+                >
+                  <LayoutDashboard className="w-3.5 h-3.5" />
+                  <span>Dashboard</span>
+                </Link>
+              </>
+            )}
+          </nav>
         </div>
 
         {/* Right: Auth Controls */}
