@@ -5,6 +5,62 @@ import { AuthenticatedRequest } from '../middleware/auth.middleware';
 import { appRedis } from '../lib/redis';
 import prisma from '../lib/prisma';
 
+const EVENT_RATE_LIMIT_MAX = parseInt(process.env.EVENT_RATE_LIMIT_MAX!);
+const EVENT_RATE_LIMIT_WINDOW_MS = parseInt(process.env.EVENT_RATE_LIMIT_WINDOW_MS!);
+
+const slidingWindowLua = `
+local key = KEYS[1]
+local now = tonumber(ARGV[1])
+local windowStart = tonumber(ARGV[2])
+local limit = tonumber(ARGV[3])
+local ttl = tonumber(ARGV[4])
+local member = ARGV[5]
+
+-- 1. Remove requests outside the sliding window
+redis.call("ZREMRANGEBYSCORE", key, 0, windowStart)
+
+-- 2. Count requests in the sliding window
+local count = redis.call("ZCARD", key)
+
+-- 3. Check if limit reached
+if count >= limit then
+    return 0
+end
+
+-- 4. Add current request
+redis.call("ZADD", key, now, member)
+
+-- 5. Set key expiration
+redis.call("EXPIRE", key, ttl)
+
+return 1
+`;
+
+export async function checkRateLimit(
+  identifier: string,
+  limit = EVENT_RATE_LIMIT_MAX,
+  windowMs = EVENT_RATE_LIMIT_WINDOW_MS
+): Promise<boolean> {
+  const key = `ratelimit:events:${identifier}`;
+  const now = Date.now();
+  const windowStart = now - windowMs;
+  const ttlSeconds = Math.ceil(windowMs / 1000);
+  const uniqueMember = `${now}-${crypto.randomUUID()}`;
+
+  const result = await appRedis.eval(
+    slidingWindowLua,
+    1,
+    key,
+    now.toString(),
+    windowStart.toString(),
+    limit.toString(),
+    ttlSeconds.toString(),
+    uniqueMember
+  );
+
+  return result === 1;
+}
+
 export async function createEvent(req: ApiKeyRequest, res: Response) {
   try {
     if (!req.orgAuth) {
@@ -28,18 +84,13 @@ export async function createEvent(req: ApiKeyRequest, res: Response) {
       return;
     }
 
-    
-    const rateLimitWindow = Math.floor(Date.now() / 10000);
-    const rateLimitKey = `ratelimit:${organizationId}:${rateLimitWindow}`;
-    
-    const requestsCount = await appRedis.incr(rateLimitKey);
-    
-    if (requestsCount === 1) {
-      await appRedis.expire(rateLimitKey, 10);
-    }
-    
-    if (requestsCount > 1000) {
-      res.status(429).json({ message: "Too many requests. Rate limit exceeded." });
+    // Sliding Window Rate Limiter Check (10s window)
+    const isAllowed = await checkRateLimit(organizationId);
+    if (!isAllowed) {
+      res.status(429).json({
+        message: "Too many requests. Sliding window rate limit exceeded. Please retry later.",
+        retryAfterSeconds: Math.ceil(EVENT_RATE_LIMIT_WINDOW_MS / 1000),
+      });
       return;
     }
 
