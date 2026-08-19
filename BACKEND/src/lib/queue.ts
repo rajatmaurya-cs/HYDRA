@@ -17,6 +17,16 @@ export const webhookQueue = new Queue(WEBHOOK_QUEUE_NAME, {
   },
 });
 
+export async function getQueueDepth(): Promise<number> {
+  try {
+    const counts = await webhookQueue.getJobCounts('waiting', 'delayed', 'prioritized');
+    return (counts.waiting || 0) + (counts.delayed || 0) + (counts.prioritized || 0);
+  } catch (error) {
+    console.error('Error fetching BullMQ queue depth:', error);
+    return 0;
+  }
+}
+
 export async function addWebhookJob(jobName: string, data: any, jobId?: string) {
   try {
     const job = await webhookQueue.add(

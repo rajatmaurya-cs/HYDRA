@@ -133,6 +133,7 @@ Traditional webhook dispatch mechanisms fail when downstream subscriber services
 ## ✨ Key Features
 
 - 🛡 **Transactional Outbox Pattern**: Eliminates dual-write vulnerabilities. Events are guaranteed to be queued if the database transaction commits.
+- 🛑 **Two-Layer Distributed Backpressure**: Layer 1 guards PostgreSQL from overload by inspecting system queue depth before opening transactions; Layer 2 dynamically pauses Kafka consumer polling when BullMQ reaches high-watermark thresholds, preventing Redis OOM.
 - ⚡ **Asynchronous Stream Buffering**: Built on Apache Kafka to smoothly ingest high-volume spikes without overwhelming downstream endpoints.
 - 🔀 **Dynamic Multi-Tenant Fan-Out**: Automatically routes single events to multiple subscriber endpoints subscribed to matching topics/types.
 - 🔁 **Smart Exponential Backoff Retries**: Distinguishes between non-retriable client errors (4xx) and retriable network/server faults (5xx, 429).

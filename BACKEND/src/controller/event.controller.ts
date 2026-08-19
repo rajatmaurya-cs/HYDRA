@@ -4,9 +4,11 @@ import { ApiKeyRequest } from '../middleware/apiKey.middleware';
 import { AuthenticatedRequest } from '../middleware/auth.middleware';
 import { appRedis } from '../lib/redis';
 import prisma from '../lib/prisma';
+import { getQueueDepth } from '../lib/queue';
 
-const EVENT_RATE_LIMIT_MAX = parseInt(process.env.EVENT_RATE_LIMIT_MAX!);
-const EVENT_RATE_LIMIT_WINDOW_MS = parseInt(process.env.EVENT_RATE_LIMIT_WINDOW_MS!);
+const EVENT_RATE_LIMIT_MAX = parseInt(process.env.EVENT_RATE_LIMIT_MAX || '100', 10);
+const EVENT_RATE_LIMIT_WINDOW_MS = parseInt(process.env.EVENT_RATE_LIMIT_WINDOW_MS || '10000', 10);
+const INGRESS_MAX_QUEUE_DEPTH = parseInt(process.env.INGRESS_MAX_QUEUE_DEPTH || '10000', 10);
 
 const slidingWindowLua = `
 local key = KEYS[1]
@@ -16,25 +18,24 @@ local limit = tonumber(ARGV[3])
 local ttl = tonumber(ARGV[4])
 local member = ARGV[5]
 
--- 1. Remove requests outside the sliding window
 redis.call("ZREMRANGEBYSCORE", key, 0, windowStart)
 
--- 2. Count requests in the sliding window
 local count = redis.call("ZCARD", key)
 
--- 3. Check if limit reached
 if count >= limit then
     return 0
 end
 
--- 4. Add current request
 redis.call("ZADD", key, now, member)
-
--- 5. Set key expiration
 redis.call("EXPIRE", key, ttl)
 
 return 1
 `;
+
+export async function checkIngressBackpressure(maxDepth = INGRESS_MAX_QUEUE_DEPTH): Promise<boolean> {
+  const currentQueueDepth = await getQueueDepth();
+  return currentQueueDepth >= maxDepth;
+}
 
 export async function checkRateLimit(
   identifier: string,
@@ -84,7 +85,17 @@ export async function createEvent(req: ApiKeyRequest, res: Response) {
       return;
     }
 
-    // Sliding Window Rate Limiter Check (10s window)
+    const isOverloaded = await checkIngressBackpressure();
+    if (isOverloaded) {
+      res.setHeader('Retry-After', '5');
+      res.status(503).json({
+        error: 'BACKPRESSURE_LIMIT_EXCEEDED',
+        message: 'System is currently processing peak event load. Please retry in 5 seconds.',
+        retryAfterSeconds: 5,
+      });
+      return;
+    }
+
     const isAllowed = await checkRateLimit(organizationId);
     if (!isAllowed) {
       res.status(429).json({
@@ -94,9 +105,7 @@ export async function createEvent(req: ApiKeyRequest, res: Response) {
       return;
     }
 
-    
     const result = await prisma.$transaction(async (tx) => {
-      
       if (idempotencyKey) {
         const existing = await tx.idempotencyKey.findUnique({
           where: { key: idempotencyKey },
@@ -110,7 +119,6 @@ export async function createEvent(req: ApiKeyRequest, res: Response) {
         }
       }
 
-      
       const event = await tx.event.create({
         data: {
           organizationId,
@@ -121,7 +129,6 @@ export async function createEvent(req: ApiKeyRequest, res: Response) {
         },
       });
 
-      
       if (idempotencyKey) {
         await tx.idempotencyKey.create({
           data: {
@@ -131,7 +138,6 @@ export async function createEvent(req: ApiKeyRequest, res: Response) {
         });
       }
 
-      
       await tx.outbox.create({
         data: {
           eventId: event.id,
@@ -163,7 +169,6 @@ export async function createEvent(req: ApiKeyRequest, res: Response) {
   } catch (error: any) {
     const idempotencyKey = req.headers['idempotency-key'] as string | undefined;
 
-    
     if (error?.code === 'P2002' && idempotencyKey) {
       try {
         const existingKey = await prisma.idempotencyKey.findUnique({
@@ -202,7 +207,6 @@ export async function getOrganizationEvents(req: AuthenticatedRequest, res: Resp
       return;
     }
 
-    
     const org = await prisma.organization.findFirst({
       where: {
         id: organizationId,
@@ -215,7 +219,6 @@ export async function getOrganizationEvents(req: AuthenticatedRequest, res: Resp
       return;
     }
 
-    
     const events = await prisma.event.findMany({
       where: {
         organizationId,

@@ -2,21 +2,24 @@ import crypto from 'crypto';
 import { Prisma } from '@prisma/client';
 import prisma from '../lib/prisma';
 import { createConsumer, ensureTopicExists, disconnectProducer } from '../lib/kafka';
-import { addWebhookJob, createWebhookWorker } from '../lib/queue';
+import { addWebhookJob, createWebhookWorker, getQueueDepth } from '../lib/queue';
 import { Consumer } from 'kafkajs';
 import { Worker } from 'bullmq';
 import { canRequest, recordFailure, recordSuccess } from '../lib/circuitBreaker';
 import { getSubscribedEndpoints, getEndpointMetadata } from '../lib/endpointCache';
 
+const BULLMQ_HIGH_WATERMARK = parseInt(process.env.BULLMQ_HIGH_WATERMARK || '5000', 10);
+const BULLMQ_LOW_WATERMARK = parseInt(process.env.BULLMQ_LOW_WATERMARK || '1000', 10);
+
 let activeConsumer: Consumer | null = null;
 let activeWorker: Worker | null = null;
+let isConsumerPaused = false;
 
 interface DeliveryRecord {
   id: string;
   endpointId: string;
   eventId: string;
 }
-
 
 export async function syncEventState(eventId: string): Promise<void> {
   try {
@@ -43,7 +46,6 @@ export async function syncEventState(eventId: string): Promise<void> {
     } else if (deadCount === totalDeliveries) {
       status = 'FAILED';
     } else {
-      
       status = 'PARTIAL_SUCCESS';
     }
 
@@ -78,8 +80,37 @@ export async function startBackgroundServices() {
 
     await activeConsumer.run({
       autoCommit: false,
-      eachMessage: async ({ topic, partition, message }) => {
+      eachMessage: async ({ topic, partition, message, heartbeat }) => {
+        
         if (!message.value) return;
+
+        // ─── LAYER 2 BACKPRESSURE: BullMQ High-Watermark Check ─────────────
+        const currentQueueDepth = await getQueueDepth();
+        if (currentQueueDepth >= BULLMQ_HIGH_WATERMARK) {
+          if (!isConsumerPaused && activeConsumer) {
+            console.warn(
+              `⚠️ LAYER 2 BACKPRESSURE TRIGGERED: BullMQ queue depth (${currentQueueDepth}) reached High Watermark (${BULLMQ_HIGH_WATERMARK}). Pausing Kafka consumer on [${topic}].`
+            );
+            activeConsumer.pause([{ topic: 'webhook-events' }]);
+            isConsumerPaused = true;
+          }
+
+          // Throttle current batch loop while keeping Kafka heartbeat alive to avoid session timeouts
+          while ((await getQueueDepth()) > BULLMQ_LOW_WATERMARK) {
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            if (heartbeat) {
+              await heartbeat();
+            }
+          }
+
+          if (isConsumerPaused && activeConsumer) {
+            console.log(
+              `🟢 LAYER 2 BACKPRESSURE RECOVERED: BullMQ queue drained below ${BULLMQ_LOW_WATERMARK}. Resuming Kafka consumer.`
+            );
+            activeConsumer.resume([{ topic: 'webhook-events' }]);
+            isConsumerPaused = false;
+          }
+        }
 
         try {
           const rawData = JSON.parse(message.value.toString());
