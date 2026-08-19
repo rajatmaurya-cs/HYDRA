@@ -4,11 +4,9 @@ import { ApiKeyRequest } from '../middleware/apiKey.middleware';
 import { AuthenticatedRequest } from '../middleware/auth.middleware';
 import { appRedis } from '../lib/redis';
 import prisma from '../lib/prisma';
-import { getQueueDepth } from '../lib/queue';
 
 const EVENT_RATE_LIMIT_MAX = parseInt(process.env.EVENT_RATE_LIMIT_MAX || '100', 10);
 const EVENT_RATE_LIMIT_WINDOW_MS = parseInt(process.env.EVENT_RATE_LIMIT_WINDOW_MS || '10000', 10);
-const INGRESS_MAX_QUEUE_DEPTH = parseInt(process.env.INGRESS_MAX_QUEUE_DEPTH || '10000', 10);
 
 const slidingWindowLua = `
 local key = KEYS[1]
@@ -31,11 +29,6 @@ redis.call("EXPIRE", key, ttl)
 
 return 1
 `;
-
-export async function checkIngressBackpressure(maxDepth = INGRESS_MAX_QUEUE_DEPTH): Promise<boolean> {
-  const currentQueueDepth = await getQueueDepth();
-  return currentQueueDepth >= maxDepth;
-}
 
 export async function checkRateLimit(
   identifier: string,
@@ -82,17 +75,6 @@ export async function createEvent(req: ApiKeyRequest, res: Response) {
 
     if (!payload || typeof payload !== 'object') {
       res.status(400).json({ message: "Invalid request. Payload object is required." });
-      return;
-    }
-
-    const isOverloaded = await checkIngressBackpressure();
-    if (isOverloaded) {
-      res.setHeader('Retry-After', '5');
-      res.status(503).json({
-        error: 'BACKPRESSURE_LIMIT_EXCEEDED',
-        message: 'System is currently processing peak event load. Please retry in 5 seconds.',
-        retryAfterSeconds: 5,
-      });
       return;
     }
 
