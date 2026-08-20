@@ -65,14 +65,19 @@ Traditional webhook dispatch mechanisms fail when downstream subscriber services
 ## 🏛 Architecture
 
 ```
-                                      [ Incoming API Request ]
-                                                 │
-                                                 ▼
-                                     ┌───────────────────────┐
-                                     │  Idempotency Check    │
-                                     └───────────┬───────────┘
-                                                 │
-                                                 ▼
+                                  [ Incoming API Request ]
+                                             │
+                                             ▼
+                             ┌───────────────────────────────┐
+                             │ 🛡 Layer 1 Backpressure Gate  │ (Rejects 503 if Outbox Pending Entries > 10k)
+                             └───────────────┬───────────────┘
+                                             │
+                                             ▼
+                                 ┌───────────────────────┐
+                                 │  Idempotency Check    │
+                                 └───────────┬───────────┘
+                                             │
+                                             ▼
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
 │ PostgreSQL ACID Transaction                                                            │
 │ ┌───────────────────────────┐                     ┌──────────────────────────────────┐ │
@@ -93,7 +98,8 @@ Traditional webhook dispatch mechanisms fail when downstream subscriber services
                                          │
                                          ▼
                              ┌───────────────────────┐
-                             │  Kafka Consumer Group │
+                             │ 🛑 Layer 2 Backpressure│ ◄─── Pause when BullMQ > 5k
+                             │  Kafka Consumer Group │ ───► Resume when BullMQ < 1k
                              └───────────┬───────────┘
                                          │
                                          ▼
@@ -103,7 +109,7 @@ Traditional webhook dispatch mechanisms fail when downstream subscriber services
                                          │
                                          ▼
                              ┌───────────────────────┐
-                             │ BullMQ Worker Queue   │
+                             │ BullMQ Worker Queue   │ (Queue Capacity Safe in RAM)
                              └───────────┬───────────┘
                                          │
                      ┌───────────────────┴───────────────────┐
@@ -120,20 +126,22 @@ Traditional webhook dispatch mechanisms fail when downstream subscriber services
                                                 └─────────────────────────┘
 ```
 
-### End-to-End Event Lifecycle:
-1. **Intake & Idempotency**: Clients publish events with an optional `Idempotency-Key`.
-2. **Transactional Outbox**: Events and Outbox entries are committed atomically in PostgreSQL. The client receives an immediate `202 Accepted` response.
-3. **Kafka Streaming**: The Outbox Relay streams events into partitioned Kafka topics, buffering peak throughput without throttling the ingress API.
-4. **Fan-Out & Routing**: Redis caches endpoint subscriptions and maps each event to active tenant endpoints.
-5. **BullMQ Dispatch**: Workers sign payloads with HMAC SHA-256 and deliver HTTP requests with timeout enforcement.
-6. **Smart Retries & DLQ**: Transient failures trigger jittered exponential backoff retries. Exhausted attempts are routed to the Dead Letter Queue for inspection and manual redrive.
+### End-to-End Event Lifecycle & Resilience:
+1. **Layer 1 Ingress Backpressure**: Middleware evaluates PostgreSQL `Outbox` table depth. If pending backlog exceeds `10,000`, the API sheds load with `HTTP 503 / Retry-After` before opening database transactions.
+2. **Intake & Idempotency**: Authenticated clients publish events with an optional `Idempotency-Key` and receive a `202 Accepted` response in sub-2ms.
+3. **Transactional Outbox**: Events and Outbox entries are committed atomically in PostgreSQL, eliminating dual-write failure windows.
+4. **Kafka Stream Buffering**: The Outbox Relay streams events into partitioned Kafka topics, buffering peak throughput on disk.
+5. **Layer 2 Consumer Backpressure**: The Kafka consumer monitors BullMQ queue depth. When pending jobs hit the high-watermark (`5,000`), it dynamically pauses Kafka polling and maintains active heartbeats. Once workers drain the queue below `1,000`, consumer polling resumes automatically.
+6. **Fan-Out & Routing**: Redis caches endpoint subscriptions and maps each event to active tenant endpoints.
+7. **BullMQ Dispatch**: Workers sign payloads with HMAC SHA-256 and deliver HTTP requests with timeout enforcement.
+8. **Smart Retries & DLQ**: Transient failures trigger jittered exponential backoff retries. Exhausted attempts are routed to the Dead Letter Queue for inspection and manual redrive.
 
 ---
 
 ## ✨ Key Features
 
 - 🛡 **Transactional Outbox Pattern**: Eliminates dual-write vulnerabilities. Events are guaranteed to be queued if the database transaction commits.
-- 🛑 **Two-Layer Distributed Backpressure**: Layer 1 guards PostgreSQL from overload by inspecting system queue depth before opening transactions; Layer 2 dynamically pauses Kafka consumer polling when BullMQ reaches high-watermark thresholds, preventing Redis OOM.
+- 🛑 **Two-Layer Distributed Backpressure**: Layer 1 guards PostgreSQL from overload by inspecting pending Outbox table entries before opening transactions; Layer 2 dynamically pauses Kafka consumer polling when BullMQ reaches high-watermark thresholds, preventing Redis OOM.
 - ⚡ **Asynchronous Stream Buffering**: Built on Apache Kafka to smoothly ingest high-volume spikes without overwhelming downstream endpoints.
 - 🔀 **Dynamic Multi-Tenant Fan-Out**: Automatically routes single events to multiple subscriber endpoints subscribed to matching topics/types.
 - 🔁 **Smart Exponential Backoff Retries**: Distinguishes between non-retriable client errors (4xx) and retriable network/server faults (5xx, 429).
