@@ -220,7 +220,7 @@ export async function getOrganizationMetrics(req: AuthenticatedRequest, res: Res
     
     const successRate = totalDeliveries > 0 
       ? Number(((successfulDeliveries / totalDeliveries) * 100).toFixed(1))
-      : 100;
+      : 0;
 
     
     const latencyRecords = await prisma.eventDeliveryWebhook.findMany({
