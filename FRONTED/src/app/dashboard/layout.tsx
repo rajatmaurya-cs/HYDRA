@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, Suspense } from "react";
+import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import {
@@ -169,9 +170,10 @@ function DashboardSidebarContent({ children }: { children: React.ReactNode }) {
             {navItems.map((item) => {
               const isActive = pathname === item.path;
               return (
-                <button
+                <Link
                   key={item.path}
-                  onClick={() => router.push(`${item.path}?orgId=${selectedOrgId}`)}
+                  href={selectedOrgId ? `${item.path}?orgId=${selectedOrgId}` : item.path}
+                  prefetch={true}
                   className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-xs font-normal transition-all cursor-pointer ${
                     isActive
                       ? "bg-black text-white font-medium shadow-xs"
@@ -180,7 +182,7 @@ function DashboardSidebarContent({ children }: { children: React.ReactNode }) {
                 >
                   <item.Icon size={14} strokeWidth={1.75} />
                   <span>{item.label}</span>
-                </button>
+                </Link>
               );
             })}
           </nav>
